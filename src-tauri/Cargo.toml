@@ -11,9 +11,24 @@ edition = "2021"
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
+log = "0.4.20"
+env_logger = "0.11.2"
 tauri = { version = "1", features = ["shell-open"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+hex = "0.4.3"
+sha2 = "0.10.8"
+chrono = "0.4.34"
+
+lancedb = "0.4.12"
+tokio = "1.36.0"
+futures = "0.3.30"
+arrow-array = "50.0.0"
+arrow-schema = "50.0.0"
+fastembed = "3.1.1"
+anyhow = "1.0.79"
+rand = "0.8.5"
+
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
