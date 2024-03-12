@@ -24,7 +24,7 @@ impl Notebook {
 
         let embed_store = EmbedStore::new(embedding_model)
             .await.map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        let (existing_notes, total_records) = embed_store.get_all()
+        let (existing_notes, _) = embed_store.get_all()
             .await.map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
         Ok(Notebook { notes: existing_notes, embed_store })
     }

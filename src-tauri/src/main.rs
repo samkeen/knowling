@@ -5,8 +5,16 @@
 mod notebook;
 mod commands;
 
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use crate::notebook::Notebook;
 use commands::save_note;
 use commands::get_notes;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub notebook: Arc<Mutex<Notebook>>,
+}
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -16,8 +24,18 @@ fn greet(name: &str) -> String {
 
 fn main() {
     env_logger::init();
+    // block until we get the Notebook 
+    let app_state = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            let notebook = Arc::new(Mutex::new(Notebook::new().await.unwrap()));
+            AppState { notebook }
+        });
 
     tauri::Builder::default()
+        .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             save_note,
             get_notes
