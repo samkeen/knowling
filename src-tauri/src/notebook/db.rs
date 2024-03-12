@@ -10,8 +10,9 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::Arc;
+use serde::Serialize;
 
-const DB_DIR: &str = "data";
+const DB_DIR: &str = "../data";
 const DB_NAME: &str = "sample-lancedb";
 const TABLE_NAME: &str = "documents";
 const EMBEDDING_DIMENSIONS: usize = 384;
@@ -19,6 +20,7 @@ const COLUMN_ID: &str = "id";
 const COLUMN_EMBEDDINGS: &str = "embeddings";
 const COLUMN_TEXT: &str = "text";
 
+#[derive(Debug, Clone, Serialize)]
 pub struct Document {
     pub id: String,
     pub text: String,
@@ -88,6 +90,7 @@ impl EmbedStore {
         text: Vec<String>,
         alt_ids: Vec<String>,
     ) -> Result<(), EmbedStoreError> {
+        log::info!("Saving Documents: {:?}", alt_ids);
         let embeddings = self.create_embeddings(&text)?;
         assert_eq!(
             embeddings[0].len(),
@@ -171,8 +174,11 @@ impl EmbedStore {
         Ok(result.pop())
     }
 
-    pub async fn get_all(&self) -> Result<Vec<Document>, EmbedStoreError> {
-        self.execute_query(None, None, Some(1000)).await
+    pub async fn get_all(&self) -> Result<(Vec<Document>, usize), EmbedStoreError> {
+        let total_records = self.record_count().await?;
+        let documents = self.execute_query(None, None, Some(1000)).await?;
+        log::info!("get_all returned {} records. Total rows in db: {}", documents.len(), total_records);
+        Ok((documents, total_records))
     }
 
     pub async fn delete<T: fmt::Display>(&self, id: T) -> Result<(), EmbedStoreError> {
@@ -221,6 +227,7 @@ impl EmbedStore {
             let text = texts.value(index).to_string();
             documents.push(Document { id: id, text: text })
         });
+        log::info!("Converted [{}] batch results to Documents", documents.len());
         documents
     }
 
