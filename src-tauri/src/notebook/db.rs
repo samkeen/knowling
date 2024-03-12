@@ -6,11 +6,11 @@ use futures::TryStreamExt;
 use lancedb::connection::Connection;
 use lancedb::index::MetricType;
 use lancedb::{connect, Table};
+use serde::Serialize;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use serde::Serialize;
 
 const DB_DIR: &str = "../data";
 const DB_NAME: &str = "sample-lancedb";
@@ -25,6 +25,7 @@ pub struct Document {
     pub id: String,
     pub text: String,
 }
+
 pub struct EmbedStore {
     embedding_model: TextEmbedding,
     db_conn: Connection,
@@ -37,6 +38,7 @@ pub enum EmbedStoreError {
     Arrow(ArrowError),
     Embedding(anyhow::Error),
 }
+
 impl fmt::Display for EmbedStoreError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -46,6 +48,7 @@ impl fmt::Display for EmbedStoreError {
         }
     }
 }
+
 impl Error for EmbedStoreError {
     // Implement this to return the lower level source of this Error.
     fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -56,6 +59,7 @@ impl Error for EmbedStoreError {
         }
     }
 }
+
 impl From<lancedb::error::Error> for EmbedStoreError {
     fn from(e: lancedb::error::Error) -> Self {
         EmbedStoreError::VectorDb(e)
@@ -177,7 +181,11 @@ impl EmbedStore {
     pub async fn get_all(&self) -> Result<(Vec<Document>, usize), EmbedStoreError> {
         let total_records = self.record_count().await?;
         let documents = self.execute_query(None, None, Some(1000)).await?;
-        log::info!("get_all returned {} records. Total rows in db: {}", documents.len(), total_records);
+        log::info!(
+            "get_all returned {} records. Total rows in db: {}",
+            documents.len(),
+            total_records
+        );
         Ok((documents, total_records))
     }
 
@@ -233,6 +241,7 @@ impl EmbedStore {
 
     async fn init_db_conn() -> Result<Connection, EmbedStoreError> {
         let db_path = format!("{}/{}", DB_DIR, DB_NAME);
+        log::info!("Connecting to db at path: '{}'", db_path);
         let db_conn = connect(db_path.as_str()).execute().await?;
         Ok(db_conn)
     }
@@ -327,13 +336,16 @@ impl EmbedStore {
 
     async fn get_or_create_table(db_conn: &Connection, table_name: &str) -> lancedb::Result<Table> {
         let table_names = db_conn.table_names().execute().await?;
+        log::info!("Existing tables: {:?}", table_names);
         let table = table_names.iter().find(|&name| name == table_name);
         match table {
             Some(_) => {
+                log::info!("Connecting to existing table '{}'", table_name);
                 let table = db_conn.open_table(table_name).execute().await?;
                 Ok(table)
             }
             None => {
+                log::info!("Table '{}' not found, creating new table", table_name);
                 let schema = Self::generate_schema(EMBEDDING_DIMENSIONS);
                 let batches = RecordBatchIterator::new(vec![], schema.clone());
                 let table = db_conn

@@ -5,7 +5,7 @@
 ```bash
 npm install
 
-RUST_LOG=info npm run tauri dev
+RUST_LOG=nova_notes=info npm run tauri dev
 ```
 
 

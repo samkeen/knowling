@@ -13,6 +13,7 @@ use commands::get_notes;
 
 #[derive(Clone)]
 pub struct AppState {
+    // See https://github.com/tauri-apps/tauri/discussions/1336#discussioncomment-1936523
     pub notebook: Arc<Mutex<Notebook>>,
 }
 
