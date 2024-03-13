@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import {ref, onMounted} from "vue";
+import {invoke} from "@tauri-apps/api/tauri";
 
 let notes = ref([]);
 
@@ -15,9 +15,13 @@ onMounted(get_notes);
 
 <template>
   <h1 class="text-3xl font-bold underline">Notes List</h1>
-  <div v-for="note in notes" :key="note.id">
-    <h2>id: {{ note.id }}</h2>
-    <p>text: {{ note.text }}</p>
-  </div>
+  <p class="font-mono">Total number of notes: {{ notes.length }}</p>
+  <ul>
+    <li v-for="note in notes" :key="note.id">
+      <p>[{{ note.id }}]::{{ note.text }}
+        <router-link :to="`/edit/${note.id}`" class="px-4 py-2 bg-blue-500 text-white rounded">Edit</router-link>
+      </p>
+    </li>
+  </ul>
   <p v-if="notes.length === 0">There are no notes</p>
 </template>

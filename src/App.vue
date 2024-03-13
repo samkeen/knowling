@@ -11,8 +11,7 @@ import {RouterLink, createWebHistory} from "vue-router";
     <RouterLink to="note" class="px-4 py-2 bg-blue-500 text-white rounded">Editor</RouterLink>
   </nav>
   <div class="container">
-    <h1 class="text-3xl font-bold underline">Notes.ai</h1>
-    <router-view />
+    <router-view/>
   </div>
 </template>
 

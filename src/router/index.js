@@ -15,6 +15,11 @@ const router = createRouter({
             // route level code-splitting (this gives us lazy loading so not all routes are loaded at once)
             component: () => import("../views/Editor.vue"),
         },
+        {
+            path: "/edit/:id",
+            name: "Edit",
+            component: () => import("../views/Editor.vue")
+        },
     ],
 });
 export default router;

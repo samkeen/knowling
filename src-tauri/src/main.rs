@@ -1,15 +1,15 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-
-mod notebook;
 mod commands;
+mod notebook;
 
+use crate::notebook::Notebook;
+use commands::get_note_by_id;
+use commands::get_notes;
+use commands::save_note;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::notebook::Notebook;
-use commands::save_note;
-use commands::get_notes;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -25,7 +25,7 @@ fn greet(name: &str) -> String {
 
 fn main() {
     env_logger::init();
-    // block until we get the Notebook 
+    // block until we get the Notebook
     let app_state = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -39,7 +39,8 @@ fn main() {
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             save_note,
-            get_notes
+            get_notes,
+            get_note_by_id
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {
