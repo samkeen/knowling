@@ -213,28 +213,28 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
-    fn record_to_document(&self, record_batch: Vec<RecordBatch>) -> Vec<Document> {
+    fn record_to_document(&self, record_batches: Vec<RecordBatch>) -> Vec<Document> {
         let mut documents: Vec<Document> = Vec::new();
-        if record_batch.len() == 0 {
+        if record_batches.len() == 0 {
             return vec![];
         }
-        let first_record_batch = record_batch.first().expect("There should always be one");
-        let ids = first_record_batch
-            .column(2)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("Failed to downcast");
-        let texts = first_record_batch
-            .column(1)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("Failed to downcast");
-        let _x = first_record_batch.num_rows();
-        (0..first_record_batch.num_rows()).for_each(|index| {
-            let id = ids.value(index).to_string();
-            let text = texts.value(index).to_string();
-            documents.push(Document { id: id, text: text })
-        });
+        for record_batch in record_batches {
+            let ids = record_batch
+                .column(2)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .expect("Failed to downcast");
+            let texts = record_batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .expect("Failed to downcast");
+            (0..record_batch.num_rows()).for_each(|index| {
+                let id = ids.value(index).to_string();
+                let text = texts.value(index).to_string();
+                documents.push(Document { id: id, text: text })
+            });
+        }
         log::info!("Converted [{}] batch results to Documents", documents.len());
         documents
     }
