@@ -6,12 +6,13 @@ use futures::TryStreamExt;
 use lancedb::connection::Connection;
 use lancedb::index::MetricType;
 use lancedb::{connect, Table};
+use serde::Serialize;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-const DB_DIR: &str = "data";
+const DB_DIR: &str = "../data";
 const DB_NAME: &str = "sample-lancedb";
 const TABLE_NAME: &str = "documents";
 const EMBEDDING_DIMENSIONS: usize = 384;
@@ -19,10 +20,12 @@ const COLUMN_ID: &str = "id";
 const COLUMN_EMBEDDINGS: &str = "embeddings";
 const COLUMN_TEXT: &str = "text";
 
+#[derive(Debug, Clone, Serialize)]
 pub struct Document {
     pub id: String,
     pub text: String,
 }
+
 pub struct EmbedStore {
     embedding_model: TextEmbedding,
     db_conn: Connection,
@@ -35,6 +38,7 @@ pub enum EmbedStoreError {
     Arrow(ArrowError),
     Embedding(anyhow::Error),
 }
+
 impl fmt::Display for EmbedStoreError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -44,6 +48,7 @@ impl fmt::Display for EmbedStoreError {
         }
     }
 }
+
 impl Error for EmbedStoreError {
     // Implement this to return the lower level source of this Error.
     fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -54,6 +59,7 @@ impl Error for EmbedStoreError {
         }
     }
 }
+
 impl From<lancedb::error::Error> for EmbedStoreError {
     fn from(e: lancedb::error::Error) -> Self {
         EmbedStoreError::VectorDb(e)
@@ -88,6 +94,7 @@ impl EmbedStore {
         text: Vec<String>,
         alt_ids: Vec<String>,
     ) -> Result<(), EmbedStoreError> {
+        log::info!("Saving Documents: {:?}", alt_ids);
         let embeddings = self.create_embeddings(&text)?;
         assert_eq!(
             embeddings[0].len(),
@@ -171,8 +178,15 @@ impl EmbedStore {
         Ok(result.pop())
     }
 
-    pub async fn get_all(&self) -> Result<Vec<Document>, EmbedStoreError> {
-        self.execute_query(None, None, Some(1000)).await
+    pub async fn get_all(&self) -> Result<(Vec<Document>, usize), EmbedStoreError> {
+        let total_records = self.record_count().await?;
+        let documents = self.execute_query(None, None, Some(1000)).await?;
+        log::info!(
+            "get_all returned {} records. Total rows in db: {}",
+            documents.len(),
+            total_records
+        );
+        Ok((documents, total_records))
     }
 
     pub async fn delete<T: fmt::Display>(&self, id: T) -> Result<(), EmbedStoreError> {
@@ -199,33 +213,35 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
-    fn record_to_document(&self, record_batch: Vec<RecordBatch>) -> Vec<Document> {
+    fn record_to_document(&self, record_batches: Vec<RecordBatch>) -> Vec<Document> {
         let mut documents: Vec<Document> = Vec::new();
-        if record_batch.len() == 0 {
+        if record_batches.len() == 0 {
             return vec![];
         }
-        let first_record_batch = record_batch.first().expect("There should always be one");
-        let ids = first_record_batch
-            .column(2)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("Failed to downcast");
-        let texts = first_record_batch
-            .column(1)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect("Failed to downcast");
-        let _x = first_record_batch.num_rows();
-        (0..first_record_batch.num_rows()).for_each(|index| {
-            let id = ids.value(index).to_string();
-            let text = texts.value(index).to_string();
-            documents.push(Document { id: id, text: text })
-        });
+        for record_batch in record_batches {
+            let ids = record_batch
+                .column(2)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .expect("Failed to downcast");
+            let texts = record_batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .expect("Failed to downcast");
+            (0..record_batch.num_rows()).for_each(|index| {
+                let id = ids.value(index).to_string();
+                let text = texts.value(index).to_string();
+                documents.push(Document { id: id, text: text })
+            });
+        }
+        log::info!("Converted [{}] batch results to Documents", documents.len());
         documents
     }
 
     async fn init_db_conn() -> Result<Connection, EmbedStoreError> {
         let db_path = format!("{}/{}", DB_DIR, DB_NAME);
+        log::info!("Connecting to db at path: '{}'", db_path);
         let db_conn = connect(db_path.as_str()).execute().await?;
         Ok(db_conn)
     }
@@ -320,13 +336,16 @@ impl EmbedStore {
 
     async fn get_or_create_table(db_conn: &Connection, table_name: &str) -> lancedb::Result<Table> {
         let table_names = db_conn.table_names().execute().await?;
+        log::info!("Existing tables: {:?}", table_names);
         let table = table_names.iter().find(|&name| name == table_name);
         match table {
             Some(_) => {
+                log::info!("Connecting to existing table '{}'", table_name);
                 let table = db_conn.open_table(table_name).execute().await?;
                 Ok(table)
             }
             None => {
+                log::info!("Table '{}' not found, creating new table", table_name);
                 let schema = Self::generate_schema(EMBEDDING_DIMENSIONS);
                 let batches = RecordBatchIterator::new(vec![], schema.clone());
                 let table = db_conn
