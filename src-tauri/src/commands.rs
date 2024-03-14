@@ -5,10 +5,14 @@ use tauri::State;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-pub async fn save_note(notebook: State<'_, AppState>, text: &str) -> Result<String, String> {
+pub async fn save_note(
+    notebook: State<'_, AppState>,
+    id: &str,
+    text: &str,
+) -> Result<String, String> {
     log::info!("Saving note: '{}'", text);
     let mut notebook = notebook.notebook.lock().await;
-    match notebook.add_note(text).await {
+    match notebook.upsert_note(id, text).await {
         Ok(note) => Ok(format!("Note[{}] recorded", note.get_id())),
         Err(e) => Err(format!("Error: {}", e)),
     }
@@ -23,8 +27,8 @@ pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, Noteb
 }
 
 #[tauri::command]
-pub async fn get_note_by_id(notebook: State<'_, AppState>, note_id: &str) -> Result<Note, String> {
+pub async fn get_note_by_id(notebook: State<'_, AppState>, id: &str) -> Result<Note, String> {
     let notebook = notebook.notebook.lock().await;
-    let note = notebook.get_note_by_id(note_id).await;
-    note.ok_or(format!("No note found with id: {}", note_id))
+    let note = notebook.get_note_by_id(id);
+    note.ok_or(format!("No note found with id: {}", id))
 }

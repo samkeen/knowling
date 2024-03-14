@@ -17,3 +17,7 @@ Generate docs:
 ```bash
 npm run docs-gen
 ```
+
+### Debugging in RustRover
+
+https://tauri.app/v1/guides/debugging/rustrover/

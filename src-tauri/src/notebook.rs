@@ -1,4 +1,4 @@
-use crate::notebook::db::{Document, EmbedStore};
+use crate::notebook::db::EmbedStore;
 use crate::notebook::note::Note;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use serde::Serialize;
@@ -9,7 +9,7 @@ mod db;
 pub mod note;
 
 pub struct Notebook {
-    // notes: Vec<Note>,
+    notes: Vec<Note>,
     embed_store: EmbedStore,
 }
 
@@ -26,40 +26,61 @@ impl Notebook {
         let embed_store = EmbedStore::new(embedding_model)
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        Ok(Notebook { embed_store })
-    }
-
-    pub async fn add_note(&mut self, content: &str) -> Result<Note, NotebookError> {
-        let note = Note::new(content);
-        log::info!("Adding note[{}]", note.get_id());
-        self.embed_store
-            .add(
-                vec![note.get_content().to_string()],
-                vec![note.get_id().to_string()],
-            )
-            .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        log::info!("Note added to database");
-        Ok(note)
-    }
-
-    pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
-        let (notes, total_records) = self
-            .embed_store
+        let (existing_notes, total_records) = embed_store
             .get_all()
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        Ok(notes)
+        Ok(Notebook {
+            notes: existing_notes,
+            embed_store,
+        })
     }
 
-    pub async fn get_note_by_id(&self, id: &str) -> Option<Note> {
-        match self.embed_store.get(id).await {
-            Ok(note) => note,
-            Err(e) => {
-                log::error!("Failed to get note by id: {}", e);
-                None
+    pub async fn upsert_note(&mut self, id: &str, content: &str) -> Result<Note, NotebookError> {
+        if id.is_empty() {
+            let note = Note::new(content);
+            log::info!("Adding note[{}]", note.get_id());
+            self.notes.push(note.clone());
+            log::info!("Adding note[{}] to database", note.get_id());
+            self.embed_store
+                .add(
+                    vec![note.get_id().to_string()],
+                    vec![note.get_content().to_string()],
+                )
+                .await
+                .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+            log::info!("Note added to database");
+            Ok(note)
+        } else {
+            let note_option = self.notes.iter_mut().find(|note| note.get_id() == id);
+            match note_option {
+                Some(note) => {
+                    note.text = content.to_string();
+                    self.embed_store
+                        .update(
+                            vec![note.get_id().to_string()],
+                            vec![note.get_content().to_string()],
+                        )
+                        .await
+                        .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                    Ok(note.clone())
+                }
+                None => Err(NotebookError::PersistenceError(format!(
+                    "Note with id {} not found",
+                    id
+                ))),
             }
         }
+    }
+
+    pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
+        match self.notes.clone() {
+            notes => Ok(notes),
+        }
+    }
+
+    pub fn get_note_by_id(&self, id: &str) -> Option<Note> {
+        self.notes.iter().find(|&note| note.get_id() == id).cloned()
     }
 }
 

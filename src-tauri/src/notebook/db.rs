@@ -91,8 +91,8 @@ impl EmbedStore {
 
     pub async fn add(
         &self,
-        text: Vec<String>,
         alt_ids: Vec<String>,
+        text: Vec<String>,
     ) -> Result<(), EmbedStoreError> {
         log::info!("Saving Documents: {:?}", alt_ids);
         let embeddings = self.create_embeddings(&text)?;
@@ -190,16 +190,25 @@ impl EmbedStore {
         Ok((documents, total_records))
     }
 
-    pub async fn delete<T: fmt::Display>(&self, id: T) -> Result<(), EmbedStoreError> {
+    pub async fn delete<T: fmt::Display>(&self, ids: &Vec<T>) -> Result<(), EmbedStoreError> {
+        let comma_separated = ids
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
         self.table
-            .delete(format!("id > {id}").as_str())
+            .delete(format!("id in ('{}')", comma_separated).as_str())
             .await
             .map_err(EmbedStoreError::from)
     }
 
-    pub async fn update(&self, id: &str, text: Vec<String>) -> Result<(), EmbedStoreError> {
-        self.delete(&id).await?;
-        self.add(text, vec![id.to_string()]).await
+    pub async fn update(
+        &self,
+        ids: Vec<String>,
+        texts: Vec<String>,
+    ) -> Result<(), EmbedStoreError> {
+        self.delete(&ids).await?;
+        self.add(ids, texts).await
     }
 
     /// Creates an index on a given field.
