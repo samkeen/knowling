@@ -8,6 +8,7 @@ import {useRoute} from 'vue-router';
 // import { ref, onMounted } from "vue";
 import {invoke} from "@tauri-apps/api/tauri";
 
+
 let noteInput = ref('');
 
 async function save_note() {
@@ -19,6 +20,7 @@ async function save_note() {
 const route = useRoute();
 const noteId = route.params.id;
 console.log("The note id: ", noteId);
+
 const input = ref('# hello')
 
 const output = computed(() => marked(input.value))

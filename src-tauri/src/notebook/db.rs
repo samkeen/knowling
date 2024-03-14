@@ -186,6 +186,7 @@ impl EmbedStore {
             documents.len(),
             total_records
         );
+
         Ok((documents, total_records))
     }
 
