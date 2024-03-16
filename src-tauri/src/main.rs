@@ -8,6 +8,8 @@ use crate::notebook::Notebook;
 use commands::get_note_by_id;
 use commands::get_notes;
 use commands::save_note;
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -25,13 +27,20 @@ fn greet(name: &str) -> String {
 
 fn main() {
     env_logger::init();
+    let text_embedding = TextEmbedding::try_new(InitOptions {
+        model_name: EmbeddingModel::AllMiniLML6V2,
+        show_download_progress: true,
+        cache_dir: PathBuf::from(Path::new("../llm-cache")),
+        ..Default::default()
+    })
+    .unwrap();
     // block until we get the Notebook
     let app_state = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
-            let notebook = Arc::new(Mutex::new(Notebook::new().await.unwrap()));
+            let notebook = Arc::new(Mutex::new(Notebook::new(text_embedding).await.unwrap()));
             AppState { notebook }
         });
 

@@ -1,9 +1,8 @@
 use crate::notebook::db::EmbedStore;
 use crate::notebook::note::Note;
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use fastembed::TextEmbedding;
 use serde::Serialize;
 use std::fmt;
-use std::path::{Path, PathBuf};
 
 mod db;
 pub mod note;
@@ -14,19 +13,11 @@ pub struct Notebook {
 }
 
 impl Notebook {
-    pub async fn new() -> Result<Self, NotebookError> {
-        let embedding_model = TextEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::AllMiniLML6V2,
-            show_download_progress: true,
-            cache_dir: PathBuf::from(Path::new("../llm-cache")),
-            ..Default::default()
-        })
-        .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
-
-        let embed_store = EmbedStore::new(embedding_model)
+    pub async fn new(text_embedding: TextEmbedding) -> Result<Self, NotebookError> {
+        let embed_store = EmbedStore::new(text_embedding)
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        let (existing_notes, total_records) = embed_store
+        let (existing_notes, _total_records) = embed_store
             .get_all()
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
@@ -102,3 +93,13 @@ impl fmt::Display for NotebookError {
 }
 
 impl std::error::Error for NotebookError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // #[test]
+    // fn test_notebook_new() {
+    //     // todo!("I think i should use dependency injection for the embedding model")
+    // }
+}

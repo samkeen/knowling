@@ -1,7 +1,6 @@
-use std::fmt::Debug;
+use crate::notebook::db::Document;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use crate::notebook::db::Document;
 
 /// Alias and extend the Document type
 pub type Note = Document;
@@ -13,7 +12,7 @@ impl Note {
     pub fn new(content: &str) -> Self {
         Note {
             id: Self::generate_id(),
-            text: content.to_string()
+            text: content.to_string(),
         }
     }
 
@@ -38,7 +37,32 @@ impl Note {
             .collect();
         id
     }
-    
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_get_id() {
+        let note = Note::new("Test Note");
+        assert!(!note.get_id().is_empty());
+    }
+
+    #[test]
+    fn test_get_content() {
+        let content = "Test Note";
+        let note = Note::new(content);
+        assert_eq!(note.get_content(), content);
+    }
+
+    #[test]
+    fn test_generated_id_length() {
+        assert_eq!(Note::generate_id().len(), 6);
+    }
+
+    #[test]
+    fn test_generated_id_unique() {
+        assert_ne!(Note::generate_id(), Note::generate_id());
+    }
+}
