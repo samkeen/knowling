@@ -9,8 +9,9 @@
         <div class="text-2xl font-bold">NovaNotes</div>
         <!-- Navigation menu items -->
         <div class="flex space-x-4">
-          <RouterLink to="/" class="px-4 py-2 bg-blue-500 text-white rounded">Notes</RouterLink>
-          <RouterLink to="note" class="px-4 py-2 bg-blue-500 text-white rounded">+</RouterLink>
+          <RouterLink :to="{name: 'Home'}" class="px-4 py-2 bg-blue-500 text-white rounded">Notes</RouterLink>
+          <RouterLink :to="{name: 'AddNote'}" class="px-4 py-2 bg-blue-500 text-white rounded">+</RouterLink>
+          <RouterLink :to="{name: 'Admin'}" class="px-4 py-2 bg-blue-500 text-white rounded">Admin</RouterLink>
           <!-- Sidebar toggle button -->
           <div class="ml-4">
             <button

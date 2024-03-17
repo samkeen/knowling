@@ -11,14 +11,19 @@ const router = createRouter({
         },
         {
             path: "/note",
-            name: "Note",
+            name: "AddNote",
             // route level code-splitting (this gives us lazy loading so not all routes are loaded at once)
             component: () => import("../views/Editor.vue"),
         },
         {
             path: "/edit/:id",
-            name: "Edit",
+            name: "EditNote",
             component: () => import("../views/Editor.vue")
+        },
+        {
+            path: "/admin",
+            name: "Admin",
+            component: () => import("../views/Admin.vue")
         },
     ],
 });
