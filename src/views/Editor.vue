@@ -1,16 +1,12 @@
 <template>
-  <div class="flex justify-between items-center p-4">
-    <button @click="toggleOutput" class="px-4 py-2 bg-blue-500 text-white rounded">{{ showOutput ? 'Hide' : 'Show' }}
-      Output
-    </button>
+
+  <textarea v-model="noteInput"
+            class="w-full p-4 overflow-auto resize-none outline-none bg-gray-100 text-sm font-mono"></textarea>
+  <div>
     <button @click="save_note" class="px-4 py-2 bg-green-500 text-white rounded">Save Note</button>
   </div>
-  <div class="flex h-screen">
-    <textarea v-model="noteInput"
-              class="flex-grow h-full p-4 border-r border-gray-300 overflow-auto resize-none outline-none bg-gray-100 text-sm font-mono"></textarea>
-    <!--    <textarea v-model="noteInput" class="flex-grow h-full p-4 border-r border-gray-300 overflow-auto resize-none outline-none bg-gray-100 text-sm font-mono" :value="input" @input="update"></textarea>-->
-    <!--    <div class="flex-grow h-full p-4 overflow-auto" v-show="showOutput" v-html="output"></div>-->
-  </div>
+  <!--    <textarea v-model="noteInput" class="flex-grow h-full p-4 border-r border-gray-300 overflow-auto resize-none outline-none bg-gray-100 text-sm font-mono" :value="input" @input="update"></textarea>-->
+  <!--    <div class="flex-grow h-full p-4 overflow-auto" v-show="showOutput" v-html="output"></div>-->
 </template>
 
 <script setup>
