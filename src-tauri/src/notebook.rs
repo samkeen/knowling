@@ -1,4 +1,4 @@
-use crate::notebook::db::EmbedStore;
+use crate::notebook::db::{Document, EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
 use fastembed::TextEmbedding;
 use serde::Serialize;
@@ -48,10 +48,7 @@ impl Notebook {
                 Some(note) => {
                     note.text = content.to_string();
                     self.embed_store
-                        .update(
-                            vec![note.get_id().to_string()],
-                            vec![note.get_content().to_string()],
-                        )
+                        .update(note.get_id(), note.get_content())
                         .await
                         .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
                     Ok(note.clone())
@@ -72,6 +69,19 @@ impl Notebook {
 
     pub fn get_note_by_id(&self, id: &str) -> Option<Note> {
         self.notes.iter().find(|&note| note.get_id() == id).cloned()
+    }
+
+    async fn compute_document_similarities(
+        &self,
+    ) -> Result<Vec<(String, String, f64)>, NotebookError> {
+        for doc in &self.notes {
+            let result = self
+                .embed_store
+                .search(&doc.text, None)
+                .await
+                .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
+        }
+        Ok(vec![])
     }
 }
 

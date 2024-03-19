@@ -1,10 +1,13 @@
+use crate::notebook::db::EmbedStoreError::Runtime;
 use arrow_array::types::Float32Type;
-use arrow_array::{ArrayRef, FixedSizeListArray, RecordBatch, RecordBatchIterator, StringArray};
+use arrow_array::{
+    ArrayRef, FixedSizeListArray, Float32Array, RecordBatch, RecordBatchIterator, StringArray,
+};
 use arrow_schema::{ArrowError, DataType, Field, Schema};
 use fastembed::{Embedding, TextEmbedding};
 use futures::TryStreamExt;
 use lancedb::connection::Connection;
-use lancedb::index::MetricType;
+use lancedb::index::Index;
 use lancedb::{connect, Table};
 use serde::Serialize;
 use std::error::Error;
@@ -26,6 +29,12 @@ pub struct Document {
     pub text: String,
 }
 
+impl PartialEq for Document {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 pub struct EmbedStore {
     embedding_model: TextEmbedding,
     db_conn: Connection,
@@ -37,6 +46,7 @@ pub enum EmbedStoreError {
     VectorDb(lancedb::error::Error),
     Arrow(ArrowError),
     Embedding(anyhow::Error),
+    Runtime(String),
 }
 
 impl fmt::Display for EmbedStoreError {
@@ -45,6 +55,7 @@ impl fmt::Display for EmbedStoreError {
             EmbedStoreError::VectorDb(e) => write!(f, "{}", e),
             EmbedStoreError::Arrow(e) => write!(f, "{}", e),
             EmbedStoreError::Embedding(e) => write!(f, "{}", e),
+            Runtime(e) => write!(f, "{}", e),
         }
     }
 }
@@ -56,6 +67,7 @@ impl Error for EmbedStoreError {
             EmbedStoreError::VectorDb(e) => Some(e),
             EmbedStoreError::Arrow(e) => Some(e),
             EmbedStoreError::Embedding(_) => None,
+            Runtime(_) => None,
         }
     }
 }
@@ -126,7 +138,7 @@ impl EmbedStore {
         &self,
         search_text: &str,
         limit: Option<usize>,
-    ) -> Result<Vec<Document>, EmbedStoreError> {
+    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
         let limit = limit.unwrap_or(25);
         let query = self.create_embeddings(&[search_text.to_string()])?;
         // flattening a 2D vector into a 1D vector. This is necessary because the search
@@ -137,40 +149,66 @@ impl EmbedStore {
             .into_iter()
             .flat_map(|embedding| embedding.to_vec())
             .collect();
-        self.execute_query(Some(query), None, Some(limit)).await
+        self.execute_search(query, None, Some(limit)).await
+    }
+
+    async fn execute_search(
+        &self,
+        query: Vec<f32>,
+        filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
+        let limit = limit.unwrap_or(10);
+        let mut query_builder = self.table.search(&query).limit(limit);
+        if let Some(filter_clause) = filter {
+            query_builder = query_builder.filter(filter_clause);
+        }
+
+        let stream = query_builder.execute_stream().await?;
+        let record_batches = match stream.try_collect::<Vec<_>>().await {
+            Ok(batches) => batches,
+            Err(err) => {
+                return Err(EmbedStoreError::VectorDb(lancedb::error::Error::Runtime {
+                    message: err.to_string(),
+                }));
+            }
+        };
+        let documents = self.record_to_document_with_distances(record_batches)?;
+
+        Ok(documents)
     }
 
     async fn execute_query(
         &self,
         query: Option<Vec<f32>>,
-        filter: Option<String>,
+        filter: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<Document>, EmbedStoreError> {
         let limit = limit.unwrap_or(10);
-        let mut query_builder = self.table.query().limit(limit);
-        if let Some(query_values) = query {
-            query_builder = query_builder
-                .nearest_to(&query_values)
-                .metric_type(MetricType::L2);
-        }
+        let mut query_builder = match query {
+            None => self.table.query().limit(limit),
+            Some(search_values) => self.table.search(&search_values).limit(limit),
+        };
         if let Some(filter_clause) = filter {
-            query_builder = query_builder.filter(&filter_clause);
+            query_builder = query_builder.filter(filter_clause);
         }
         let stream = query_builder.execute_stream().await?;
-        // @TODO having trouble converting this error
-        // I get `the trait std::convert::From<lance_core::error::Error> is not implemented for db::EmbedStoreError`
-        // BUT if I add it, I get an error stating EmbedStoreError has `lance_core::Error` implemented but not `lance_core::error::Error`
-        // Oddly, `Error` is directly under core_lance (in `error.rs`)
-        match stream.try_collect::<Vec<_>>().await {
-            Ok(result) => Ok(self.record_to_document(result)),
-            Err(e) => Err(EmbedStoreError::VectorDb(lancedb::error::Error::Runtime {
-                message: e.to_string(),
-            })),
-        }
+
+        let record_batches = match stream.try_collect::<Vec<_>>().await {
+            Ok(batches) => batches,
+            Err(err) => {
+                return Err(EmbedStoreError::VectorDb(lancedb::error::Error::Runtime {
+                    message: err.to_string(),
+                }));
+            }
+        };
+
+        let documents = self.record_to_document(record_batches)?;
+        Ok(documents)
     }
     pub async fn get(&self, id: &str) -> Result<Option<Document>, EmbedStoreError> {
         let filter = format!("id = '{}'", id);
-        let mut result = self.execute_query(None, Some(filter), None).await?;
+        let mut result = self.execute_query(None, Some(&filter), None).await?;
         assert!(
             result.len() <= 1,
             "The get by id method should only return one item at most"
@@ -190,55 +228,67 @@ impl EmbedStore {
         Ok((documents, total_records))
     }
 
-    pub async fn delete<T: fmt::Display>(&self, ids: &Vec<T>) -> Result<(), EmbedStoreError> {
-        let comma_separated = ids
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
+    pub async fn delete<T: fmt::Display>(&self, id: T) -> Result<(), EmbedStoreError> {
         self.table
-            .delete(format!("id in ('{}')", comma_separated).as_str())
+            .delete(format!("id > {id}").as_str())
             .await
             .map_err(EmbedStoreError::from)
     }
 
-    pub async fn update(
-        &self,
-        ids: Vec<String>,
-        texts: Vec<String>,
-    ) -> Result<(), EmbedStoreError> {
-        self.delete(&ids).await?;
-        self.add(ids, texts).await
+    pub async fn update(&self, id: &str, text: &str) -> Result<(), EmbedStoreError> {
+        self.delete(&id).await?;
+        self.add(vec![id.to_string()], vec![text.to_string()]).await
     }
 
     /// Creates an index on a given field.
-    pub async fn create_index(&self, num_partitions: Option<u32>) -> Result<(), EmbedStoreError> {
-        let num_partitions = num_partitions.unwrap_or(8);
+    pub async fn create_index(&self) -> Result<(), EmbedStoreError> {
         self.table
-            .create_index(&[COLUMN_EMBEDDINGS])
-            .ivf_pq()
-            .num_partitions(num_partitions)
-            .build()
+            .create_index(&[COLUMN_EMBEDDINGS], Index::Auto)
+            .execute()
             .await
             .map_err(EmbedStoreError::from)
     }
 
-    fn record_to_document(&self, record_batches: Vec<RecordBatch>) -> Vec<Document> {
-        let mut documents: Vec<Document> = Vec::new();
-        if record_batches.len() == 0 {
-            return vec![];
+    fn record_to_document_with_distances(
+        &self,
+        record_batches: Vec<RecordBatch>,
+    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
+        let mut docs_with_distance: Vec<(Document, f32)> = Vec::new();
+        if record_batches.is_empty() {
+            return Ok(vec![]);
         }
         for record_batch in record_batches {
-            let ids = record_batch
-                .column(2)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .expect("Failed to downcast");
-            let texts = record_batch
-                .column(1)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .expect("Failed to downcast");
+            let ids = self.downcast_column::<StringArray>(&record_batch, "id")?;
+            let texts = self.downcast_column::<StringArray>(&record_batch, "text")?;
+            let distances = self.downcast_column::<Float32Array>(&record_batch, "_distance")?;
+
+            (0..record_batch.num_rows()).for_each(|index| {
+                let id = ids.value(index).to_string();
+                let text = texts.value(index).to_string();
+                let distance = distances.value(index);
+                docs_with_distance.push((Document { id: id, text: text }, distance))
+            });
+        }
+        log::info!(
+            "Converted [{}] batch results to Documents",
+            docs_with_distance.len()
+        );
+
+        Ok(docs_with_distance)
+    }
+
+    fn record_to_document(
+        &self,
+        record_batches: Vec<RecordBatch>,
+    ) -> Result<Vec<Document>, EmbedStoreError> {
+        let mut documents: Vec<Document> = Vec::new();
+        if record_batches.is_empty() {
+            return Ok(vec![]);
+        }
+        for record_batch in record_batches {
+            let ids = self.downcast_column::<StringArray>(&record_batch, "id")?;
+            let texts = self.downcast_column::<StringArray>(&record_batch, "text")?;
+
             (0..record_batch.num_rows()).for_each(|index| {
                 let id = ids.value(index).to_string();
                 let text = texts.value(index).to_string();
@@ -246,7 +296,7 @@ impl EmbedStore {
             });
         }
         log::info!("Converted [{}] batch results to Documents", documents.len());
-        documents
+        Ok(documents)
     }
 
     async fn init_db_conn() -> Result<Connection, EmbedStoreError> {
@@ -379,5 +429,20 @@ impl EmbedStore {
             .create_table(table_name, Box::new(batches))
             .execute()
             .await
+    }
+
+    fn downcast_column<'a, T: std::fmt::Debug + 'static>(
+        &self,
+        record_batch: &'a RecordBatch,
+        column_name: &str,
+    ) -> Result<&'a T, EmbedStoreError> {
+        record_batch
+            .column_by_name(column_name)
+            .ok_or_else(|| EmbedStoreError::Runtime(format!("{} column not found", column_name)))?
+            .as_any()
+            .downcast_ref::<T>()
+            .ok_or_else(|| {
+                EmbedStoreError::Runtime(format!("Failed downcasting {} column", column_name))
+            })
     }
 }
