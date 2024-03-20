@@ -4,6 +4,7 @@
 mod commands;
 mod notebook;
 
+use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
 use commands::get_note_by_id;
 use commands::get_notes;
@@ -20,10 +21,6 @@ pub struct AppState {
 }
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 fn main() {
     env_logger::init();
@@ -49,7 +46,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             save_note,
             get_notes,
-            get_note_by_id
+            get_note_by_id,
+            get_note_similarities,
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

@@ -228,15 +228,20 @@ impl EmbedStore {
         Ok((documents, total_records))
     }
 
-    pub async fn delete<T: fmt::Display>(&self, id: T) -> Result<(), EmbedStoreError> {
+    pub async fn delete<T: fmt::Display>(&self, ids: &Vec<T>) -> Result<(), EmbedStoreError> {
+        let comma_separated = ids
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
         self.table
-            .delete(format!("id > {id}").as_str())
+            .delete(format!("id in ('{}')", comma_separated).as_str())
             .await
             .map_err(EmbedStoreError::from)
     }
 
     pub async fn update(&self, id: &str, text: &str) -> Result<(), EmbedStoreError> {
-        self.delete(&id).await?;
+        self.delete(&vec![id]).await?;
         self.add(vec![id.to_string()], vec![text.to_string()]).await
     }
 

@@ -29,9 +29,6 @@ const showOutput = ref(true)
 const update = debounce((e) => {
   input.value = e.target.value
 }, 100)
-const toggleOutput = () => {
-  showOutput.value = !showOutput.value
-}
 
 async function save_note() {
   let note = await invoke("save_note", {id: noteId, text: noteInput.value})

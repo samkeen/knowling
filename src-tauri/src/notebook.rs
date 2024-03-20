@@ -1,4 +1,4 @@
-use crate::notebook::db::{Document, EmbedStore, EmbedStoreError};
+use crate::notebook::db::{EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
 use fastembed::TextEmbedding;
 use serde::Serialize;
@@ -71,17 +71,18 @@ impl Notebook {
         self.notes.iter().find(|&note| note.get_id() == id).cloned()
     }
 
-    async fn compute_document_similarities(
+    pub async fn get_note_similars(
         &self,
-    ) -> Result<Vec<(String, String, f64)>, NotebookError> {
-        for doc in &self.notes {
-            let result = self
-                .embed_store
-                .search(&doc.text, None)
-                .await
-                .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
-        }
-        Ok(vec![])
+        note: Note,
+        limit: Option<usize>,
+    ) -> Result<Vec<(Note, f32)>, NotebookError> {
+        let limit = limit.unwrap_or(3);
+        let result = self
+            .embed_store
+            .search(&note.text, Some(limit))
+            .await
+            .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
+        Ok(result)
     }
 }
 
@@ -90,6 +91,7 @@ pub enum NotebookError {
     PersistenceError(String),
     EmbeddingError(String),
     TableCreationError(String),
+    NoteNotFound(String),
 }
 
 impl fmt::Display for NotebookError {
@@ -98,6 +100,7 @@ impl fmt::Display for NotebookError {
             NotebookError::PersistenceError(e) => write!(f, "Persistence error: {}", e),
             NotebookError::EmbeddingError(e) => write!(f, "Embedding error: {}", e),
             NotebookError::TableCreationError(e) => write!(f, "Table creation error: {}", e),
+            NotebookError::NoteNotFound(e) => write!(f, "Table creation error: {}", e),
         }
     }
 }
