@@ -27,36 +27,43 @@ impl Notebook {
         })
     }
 
-    pub async fn upsert_note(&mut self, id: &str, content: &str) -> Result<Note, NotebookError> {
-        if id.is_empty() {
-            let note = Note::new(content);
-            log::info!("Adding note[{}]", note.get_id());
-            self.notes.push(note.clone());
-            log::info!("Adding note[{}] to database", note.get_id());
-            self.embed_store
-                .add(
-                    vec![note.get_id().to_string()],
-                    vec![note.get_content().to_string()],
-                )
-                .await
-                .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-            log::info!("Note added to database");
-            Ok(note)
-        } else {
-            let note_option = self.notes.iter_mut().find(|note| note.get_id() == id);
-            match note_option {
-                Some(note) => {
-                    note.text = content.to_string();
-                    self.embed_store
-                        .update(note.get_id(), note.get_content())
-                        .await
-                        .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-                    Ok(note.clone())
+    pub async fn upsert_note(
+        &mut self,
+        id: Option<&str>,
+        content: &str,
+    ) -> Result<Note, NotebookError> {
+        match id {
+            Some(id) => {
+                let note_option = self.notes.iter_mut().find(|note| note.get_id() == id);
+                match note_option {
+                    Some(note) => {
+                        note.text = content.to_string();
+                        self.embed_store
+                            .update(note.get_id(), note.get_content())
+                            .await
+                            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                        Ok(note.clone())
+                    }
+                    None => Err(NotebookError::PersistenceError(format!(
+                        "Note with id {} not found",
+                        id
+                    ))),
                 }
-                None => Err(NotebookError::PersistenceError(format!(
-                    "Note with id {} not found",
-                    id
-                ))),
+            }
+            None => {
+                let note = Note::new(content);
+                log::info!("Adding note[{}]", note.get_id());
+                self.notes.push(note.clone());
+                log::info!("Adding note[{}] to database", note.get_id());
+                self.embed_store
+                    .add(
+                        vec![note.get_id().to_string()],
+                        vec![note.get_content().to_string()],
+                    )
+                    .await
+                    .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                log::info!("Note added to database");
+                Ok(note)
             }
         }
     }

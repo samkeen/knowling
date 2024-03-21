@@ -7,7 +7,7 @@ use tauri::State;
 #[tauri::command]
 pub async fn save_note(
     notebook: State<'_, AppState>,
-    id: &str,
+    id: Option<&str>,
     text: &str,
 ) -> Result<String, String> {
     log::info!("Saving note: '{}'", text);

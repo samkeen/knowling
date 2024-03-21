@@ -1,22 +1,25 @@
 <template>
-  <h1 class="text-xl font-bold underline">Notes List</h1>
-  <p class="font-mono">Total number of notes: {{ notes.length }}</p>
-  <ul>
-    <li v-for="note in notes" :key="note.id">
-      <p>
-        <RouterLink :to="{ name: 'EditNote', params: { id: note.id } }">[{{ note.id }}]::{{ note.text }}</RouterLink>
-      </p>
-    </li>
-  </ul>
-  <p v-if="notes.length === 0">There are no notes</p>
+  <div class="mb-8">
+    <h2 class="text-2xl font-bold mb-4">Notes</h2>
+    <ul>
+
+      <li v-for="note in notes" :key="note.id" class="mb-4 p-4 bg-white shadow">
+        <RouterLink :to="{ name: 'EditNote', params: { id: note.id } }">
+          <h3 class="font-bold">{{ note.id }}</h3>
+          <p>{{ note.text }}</p>
+        </RouterLink>
+      </li>
+
+    </ul>
+  </div>
 </template>
 
 <script setup>
-import {ref, onMounted} from "vue";
-import {RouterLink, createWebHistory} from "vue-router";
+import {onMounted, ref} from 'vue'
 import {invoke} from "@tauri-apps/api/tauri";
+import {RouterLink, createWebHistory} from "vue-router";
 
-let notes = ref([]);
+const notes = ref([]);
 
 async function get_notes() {
   let result = await invoke("get_notes");
@@ -25,4 +28,6 @@ async function get_notes() {
 }
 
 onMounted(get_notes);
+
+
 </script>
