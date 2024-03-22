@@ -4,6 +4,7 @@
       <form @submit.prevent="saveNote">
         <textarea v-model="noteText" class="w-full mb-4 p-2 border h-40" placeholder="Note text"></textarea>
         <button @click="save_note" type="submit" class="bg-blue-500 text-white py-2 px-4">Save</button>
+        <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
       </form>
     </div>
     <Sidebar :note-id="noteId"/>
@@ -14,6 +15,7 @@ import Sidebar from '../components/Sidebar.vue'
 import {useRoute} from 'vue-router';
 import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
+// import router from "../router/index.js";
 
 let noteText = ref('');
 
@@ -29,6 +31,19 @@ async function save_note() {
     let note = await invoke("save_note", {id: noteId, text: noteText.value})
     // let note = await invoke("new_note", {text: noteText.value})
     console.log("Note created: ", note.id);
+  }
+}
+
+async function delete_note() {
+  if (noteId) {
+    await invoke("delete_note", {id: noteId})
+    console.log("Note deleted: ", noteId);
+    // This doesn't work for some reason??
+    // await router.push("/")
+    // So do it old skool
+    window.location.href = "/";
+  } else {
+    console.log("The note is not defined: ", noteId);
   }
 }
 

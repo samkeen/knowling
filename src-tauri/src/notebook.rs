@@ -78,6 +78,16 @@ impl Notebook {
         self.notes.iter().find(|&note| note.get_id() == id).cloned()
     }
 
+    pub async fn delete_note(&mut self, id: &str) -> Result<(), NotebookError> {
+        log::info!("Deleting note[{}]", id);
+        self.embed_store
+            .delete(&vec![id])
+            .await
+            .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
+        self.notes.retain(|note| note.get_id() != id);
+        Ok(())
+    }
+
     pub async fn get_note_similars(
         &self,
         note: Note,

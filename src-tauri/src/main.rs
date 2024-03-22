@@ -6,9 +6,7 @@ mod notebook;
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
-use commands::get_note_by_id;
-use commands::get_notes;
-use commands::save_note;
+use commands::{delete_note, get_note_by_id, get_notes, save_note};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -48,6 +46,7 @@ fn main() {
             get_notes,
             get_note_by_id,
             get_note_similarities,
+            delete_note,
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

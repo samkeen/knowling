@@ -40,6 +40,12 @@ pub async fn get_note_by_id(
 }
 
 #[tauri::command]
+pub async fn delete_note(notebook: State<'_, AppState>, id: &str) -> Result<(), NotebookError> {
+    let mut notebook = notebook.notebook.lock().await;
+    notebook.delete_note(id).await
+}
+
+#[tauri::command]
 pub async fn get_note_similarities(
     notebook: State<'_, AppState>,
     id: &str,
