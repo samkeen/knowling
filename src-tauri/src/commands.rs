@@ -53,7 +53,7 @@ pub async fn get_note_similarities(
     let notebook = notebook.notebook.lock().await;
     let note = notebook.get_note_by_id(id);
     match note {
-        Some(note) => notebook.get_note_similars(note, Some(3)).await,
+        Some(note) => notebook.get_note_similars(note, Some(3), Some(0.5)).await,
         None => Err(NotebookError::NoteNotFound(format!(
             "No note found with id: {}",
             id

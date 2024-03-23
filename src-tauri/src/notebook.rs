@@ -7,6 +7,9 @@ use std::fmt;
 mod db;
 pub mod note;
 
+const SIMILARS_DEFAULT_LIMIT: usize = 3;
+const SIMILARS_DEFAULT_THRESHOLD: f32 = 0.01;
+
 pub struct Notebook {
     notes: Vec<Note>,
     embed_store: EmbedStore,
@@ -92,9 +95,11 @@ impl Notebook {
         &self,
         note: Note,
         limit: Option<usize>,
+        threshold: Option<f32>,
     ) -> Result<Vec<(Note, f32)>, NotebookError> {
         log::info!("Getting related notes for Note[{}]", note.get_id());
-        let limit = limit.unwrap_or(3);
+        let limit = limit.unwrap_or(SIMILARS_DEFAULT_LIMIT);
+        let threshold = threshold.unwrap_or(SIMILARS_DEFAULT_THRESHOLD);
         let result = self
             .embed_store
             .search(
@@ -105,7 +110,25 @@ impl Notebook {
             )
             .await
             .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
-        Ok(result)
+        let results_outside_threshold: Vec<_> = result
+            .clone()
+            .into_iter()
+            .filter(|i| i.1 > threshold)
+            .collect();
+        if results_outside_threshold.is_empty() {
+            log::info!("All results met the threshold of {}", threshold);
+            return Ok(result);
+        }
+        log::info!(
+            "{} result(s) did not meet the threshold of {}: {:?}",
+            results_outside_threshold.len(),
+            threshold,
+            results_outside_threshold
+                .iter()
+                .map(|(note, score)| format!("{}:{}", note.get_id(), score))
+                .collect::<Vec<_>>()
+        );
+        Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
     }
 }
 
