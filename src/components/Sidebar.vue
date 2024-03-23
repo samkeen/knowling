@@ -1,9 +1,9 @@
 <template>
-  <div class="w-64 bg-gray-100 pl-4">
-    <h2 class="text-xl font-bold mb-4">Collections</h2>
+  <div class="w-72 bg-gray-100 pl-4">
+    <h2 class="text-xl font-bold mb-4">Related</h2>
     <ul>
       <li v-for="note in relatedNotes" :key="note[0].id">
-        {{ note[0].id }}
+        {{ getFirstLine(note[0].text) }} {{ note[1] }}
       </li>
     </ul>
   </div>
@@ -12,6 +12,7 @@
 <script setup>
 import {ref, defineProps, onMounted} from 'vue'
 import {invoke} from "@tauri-apps/api/tauri";
+import {getFirstLine} from "../lib/utils.js";
 
 const props = defineProps({
   noteId: {
