@@ -22,9 +22,15 @@ import {RouterLink, createWebHistory} from "vue-router";
 const notes = ref([]);
 
 async function get_notes() {
-  let result = await invoke("get_notes");
-  console.log("The all notes result: ", result);
-  notes.value = result;
+  try {
+    let result = await invoke("get_notes");
+    console.log("The all notes result: ", result);
+    notes.value = result;
+  } catch (error) {
+    console.error("Failed getting notes:", error);
+    // Handle the error as needed, e.g., show a user-friendly message
+  }
+
 }
 
 onMounted(get_notes);

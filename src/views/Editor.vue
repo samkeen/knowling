@@ -25,23 +25,37 @@ console.log("The note id: ", noteId);
 
 async function save_note() {
   if (noteId) {
-    let note = await invoke("save_note", {id: noteId, text: noteText.value})
-    console.log("Note updated: ", note.id);
+    try {
+      let note = await invoke("save_note", {id: noteId, text: noteText.value})
+      console.log("Note updated: ", note.id);
+    } catch (error) {
+      console.error("Failed saving note:", error);
+      // Handle the error as needed, e.g., show a user-friendly message
+    }
   } else {
-    let note = await invoke("save_note", {id: noteId, text: noteText.value})
-    // let note = await invoke("new_note", {text: noteText.value})
-    console.log("Note created: ", note.id);
+    try {
+      let note = await invoke("save_note", {id: noteId, text: noteText.value})
+      console.log("Note created: ", note.id);
+    } catch (error) {
+      console.error("Failed saving note:", error);
+      // Handle the error as needed, e.g., show a user-friendly message
+    }
   }
 }
 
 async function delete_note() {
   if (noteId) {
-    await invoke("delete_note", {id: noteId})
-    console.log("Note deleted: ", noteId);
-    // This doesn't work for some reason??
-    // await router.push("/")
-    // So do it old skool
-    window.location.href = "/";
+    try {
+      await invoke("delete_note", {id: noteId})
+      console.log("Note deleted: ", noteId);
+      // This doesn't work for some reason??
+      // await router.push("/")
+      // So do it old skool
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Failed deleting note:", error);
+      // Handle the error as needed, e.g., show a user-friendly message
+    }
   } else {
     console.log("The note is not defined: ", noteId);
   }
@@ -50,8 +64,13 @@ async function delete_note() {
 onMounted(async () => {
   if (noteId) {
     console.log("The note id: ", noteId);
-    const note = await invoke("get_note_by_id", {id: noteId});
-    noteText.value = note.text;
+    try {
+      const note = await invoke("get_note_by_id", {id: noteId});
+      noteText.value = note.text;
+    } catch (error) {
+      console.error("Failed getting note:", error);
+      // Handle the error as needed, e.g., show a user-friendly message
+    }
   } else {
     console.log("The note id is not defined");
   }

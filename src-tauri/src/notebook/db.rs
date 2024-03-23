@@ -137,6 +137,7 @@ impl EmbedStore {
     pub async fn search(
         &self,
         search_text: &str,
+        filter: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
         let limit = limit.unwrap_or(25);
@@ -149,7 +150,7 @@ impl EmbedStore {
             .into_iter()
             .flat_map(|embedding| embedding.to_vec())
             .collect();
-        self.execute_search(query, None, Some(limit)).await
+        self.execute_search(query, filter, Some(limit)).await
     }
 
     async fn execute_search(
@@ -160,6 +161,7 @@ impl EmbedStore {
     ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
         let limit = limit.unwrap_or(10);
         let mut query_builder = self.table.search(&query).limit(limit);
+        // filter, see https://lancedb.github.io/lancedb/sql/
         if let Some(filter_clause) = filter {
             query_builder = query_builder.filter(filter_clause);
         }

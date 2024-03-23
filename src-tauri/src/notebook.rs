@@ -93,10 +93,16 @@ impl Notebook {
         note: Note,
         limit: Option<usize>,
     ) -> Result<Vec<(Note, f32)>, NotebookError> {
+        log::info!("Getting related notes for Note[{}]", note.get_id());
         let limit = limit.unwrap_or(3);
         let result = self
             .embed_store
-            .search(&note.text, Some(limit))
+            .search(
+                &note.text,
+                Some(format!("id NOT IN ('{}')", note.get_id()).as_str()),
+                // the filter will reduce the number of returned results by 1
+                Some(limit + 1),
+            )
             .await
             .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
         Ok(result)

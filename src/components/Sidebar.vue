@@ -26,7 +26,12 @@ const relatedNotes = ref([]);
 
 // Define the function to get related notes
 async function getRelatedNotes(noteId) {
-  relatedNotes.value = await invoke("get_note_similarities", {id: noteId});
+  try {
+    relatedNotes.value = await invoke("get_note_similarities", {id: noteId});
+  } catch (error) {
+    console.error("Failed to get related notes:", error);
+    // Handle the error as needed, e.g., show a user-friendly message
+  }
 }
 
 onMounted(() => {
