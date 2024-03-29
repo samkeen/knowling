@@ -1,10 +1,9 @@
-<script setup>
-import Milkdown from '../components/MilkdownEditor.vue'
-import {MilkdownProvider} from '@milkdown/vue';
+<script setup lang="ts">
+import MilkdownEditorWrapper from '../components/MilkdownEditorWrapper.vue'
 </script>
 
 <template>
-  <MilkdownProvider>
-    <Milkdown/>
-  </MilkdownProvider>
+  <MilkdownEditorWrapper/>
 </template>
+
+<style scoped></style>

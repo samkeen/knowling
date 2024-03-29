@@ -14,6 +14,7 @@
   "dependencies": {
     "@milkdown/core": "^7.3.5",
     "@milkdown/ctx": "^7.3.5",
+    "@milkdown/plugin-listener": "^7.3.5",
     "@milkdown/preset-commonmark": "^7.3.5",
     "@milkdown/prose": "^7.3.5",
     "@milkdown/theme-nord": "^7.3.5",

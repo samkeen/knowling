@@ -28,8 +28,6 @@ import {useRoute} from 'vue-router';
 import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
 
-// import router from "../router/index.js";
-
 let noteText = ref('');
 
 const route = useRoute();
