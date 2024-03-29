@@ -1,23 +1,17 @@
 <script setup>
 import {MilkdownProvider} from '@milkdown/vue'
-// import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/vue'
 import MilkdownEditor from './MilkdownEditor.vue'
+
+const emit = defineEmits(['update']);
+const props = defineProps({
+  initialValue: String
+});
 </script>
 
-<!-- MilkdownEditorWrapper.vue -->
 <template>
   <div class="root">
     <MilkdownProvider>
-      <!--      <ProsemirrorAdapterProvider>-->
-      <MilkdownEditor/>
-      <!--      </ProsemirrorAdapterProvider>-->
+      <MilkdownEditor :initialValue="props.initialValue" @update="emit('update', $event)"/>
     </MilkdownProvider>
   </div>
 </template>
-
-<!--<style lang="scss" scoped>-->
-<!--.root {-->
-<!--  margin: 50px;-->
-<!--  border: 1px solid var(&#45;&#45;kungalgame-blue-4);-->
-<!--}-->
-<!--</style>-->

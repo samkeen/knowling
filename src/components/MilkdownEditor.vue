@@ -4,8 +4,6 @@
  */
 
 import {computed, ref} from 'vue'
-// KUN Visual Novel Menu
-// import MilkdownMenu from './plugins/MilkdownMenu.vue'
 // Milkdown core
 import {Editor, rootCtx, rootAttrsCtx, defaultValueCtx} from '@milkdown/core'
 import {Milkdown, useEditor} from '@milkdown/vue'
@@ -52,7 +50,13 @@ import {listener, listenerCtx} from '@milkdown/plugin-listener'
 // import markdown from 'refractor/lang/markdown'
 
 // Editor markdown preset
-const value = ref('')
+// const value = ref('')
+const emit = defineEmits(['update']);
+const props = defineProps({
+  initialValue: String
+});
+
+const value = ref(props.initialValue);
 
 // const editorHight = computed(() => 300 + 'px')
 const valueMarkdown = computed(() => value.value)
@@ -62,7 +66,7 @@ const container = ref(null)
 const isEditorFocus = ref(false)
 const editorContent = ref('')
 
-const editorInfo = useEditor((root) =>
+useEditor((root) =>
         Editor.make()
             .config((ctx) => {
               ctx.set(rootCtx, root)
@@ -76,7 +80,7 @@ const editorInfo = useEditor((root) =>
               listener.markdownUpdated((ctx, markdown, prevMarkdown) => {
                 if (markdown !== prevMarkdown) {
                   console.log("[updated]: ", markdown)
-
+                  emit('update', markdown);
                   editorContent.value = markdown
                 }
               })
@@ -143,13 +147,9 @@ const editorInfo = useEditor((root) =>
 )
 </script>
 
-<!-- MilkdownEditor.vue -->
 <template>
-  <div ref="container" class="editor-container">
-    <!--    <MilkdownMenu :editorInfo="editorInfo"/>-->
-    <Milkdown
-        class="editor"
-        :class="isEditorFocus || editorContent ? 'active' : ''"
-    />
-  </div>
+  <Milkdown
+      class="editor"
+      :class="isEditorFocus || editorContent ? 'active' : ''"
+  />
 </template>
