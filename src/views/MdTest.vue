@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import MilkdownEditorWrapper from '../components/MilkdownEditorWrapper.vue'
 
-const initialValue = 'Your initial text here';
-let markdownContent = '';
+let markdownContent = 'Marked down content here';
 
 function save() {
   console.log("Saving:", markdownContent);
@@ -10,7 +9,7 @@ function save() {
 </script>
 
 <template>
-  <MilkdownEditorWrapper :initialValue="initialValue" @update="markdownContent = $event"/>
+  <MilkdownEditorWrapper :initialValue="markdownContent" @update="markdownContent = $event"/>
   <button @click="save">Save</button>
 </template>
 

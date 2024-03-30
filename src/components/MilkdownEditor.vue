@@ -56,10 +56,10 @@ const props = defineProps({
   initialValue: String
 });
 
-const value = ref(props.initialValue);
+const initEditorContent = ref(props.initialValue);
 
 // const editorHight = computed(() => 300 + 'px')
-const valueMarkdown = computed(() => value.value)
+// const valueMarkdown = computed(() => value.value)
 // const tooltip = tooltipFactory('Text')
 // const pluginViewFactory = usePluginViewFactory()
 const container = ref(null)
@@ -74,7 +74,7 @@ useEditor((root) =>
               //   roles: 'kun-galgame-milkdown-editor',
               //   'aria-label': 'kun-galgame-milkdown-editor',
               // })
-              ctx.set(defaultValueCtx, valueMarkdown.value)
+              ctx.set(defaultValueCtx, initEditorContent.value)
 
               const listener = ctx.get(listenerCtx)
               listener.markdownUpdated((ctx, markdown, prevMarkdown) => {
