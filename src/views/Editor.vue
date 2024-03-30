@@ -3,15 +3,14 @@
     <div class="flex flex-col flex-1 overflow-hidden">
       <EditorToolbar/>
       <div class="flex-1 overflow-y-auto p-4">
-        <form @submit.prevent="saveNote" class="h-full flex flex-col">
-          <div class="flex-1 mb-4 p-2 border overflow-y-auto">
-            <textarea v-model="noteText" class="w-full h-full resize-none" placeholder="Note text"></textarea>
-          </div>
-          <div class="flex">
-            <button @click="save_note" type="submit" class="bg-blue-500 text-white py-2 px-4">Save</button>
-            <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
-          </div>
-        </form>
+        <template v-if="noteLoaded">
+          <MilkdownEditorWrapper :initialValue="noteText" @update="noteText = $event"/>
+          <button @click="save_note" type="submit" class="bg-blue-500 text-white py-2 px-4">Save</button>
+          <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
+        </template>
+        <template v-else>
+          <div class="text-center">Loading note...</div>
+        </template>
       </div>
     </div>
     <Sidebar :note-id="noteId"/>
@@ -27,8 +26,11 @@ import EditorToolbar from "../components/EditorToolbar.vue";
 import {useRoute} from 'vue-router';
 import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
+import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
+
 
 let noteText = ref('');
+let noteLoaded = ref(false);
 
 const route = useRoute();
 const noteId = route.params.id || null;
@@ -78,12 +80,14 @@ onMounted(async () => {
     try {
       const note = await invoke("get_note_by_id", {id: noteId});
       noteText.value = note.text;
+      noteLoaded.value = true;
     } catch (error) {
       console.error("Failed getting note:", error);
       // Handle the error as needed, e.g., show a user-friendly message
     }
   } else {
     console.log("The note id is not defined");
+    noteLoaded.value = true;
   }
 });
 

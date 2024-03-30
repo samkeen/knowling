@@ -12,10 +12,6 @@
           <li>
             <RouterLink :to="{name: 'NewNote'}" class="">+</RouterLink>
           </li>
-          <li>
-            <RouterLink :to="{name: 'MdTest'}" class="">MD</RouterLink>
-          </li>
-
         </ul>
       </nav>
     </div>

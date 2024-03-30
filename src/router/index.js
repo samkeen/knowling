@@ -25,11 +25,6 @@ const router = createRouter({
             name: "Admin",
             component: () => import("../views/Admin.vue")
         },
-        {
-            path: "/mdtest",
-            name: "MdTest",
-            component: () => import("../views/MdTest.vue")
-        },
     ],
 });
 export default router;
