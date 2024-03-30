@@ -42,7 +42,7 @@ impl Notebook {
                     Some(note) => {
                         note.text = content.to_string();
                         self.embed_store
-                            .update(note.get_id(), note.get_content())
+                            .update(vec![note.to_owned()])
                             .await
                             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
                         Ok(note.clone())
@@ -59,10 +59,7 @@ impl Notebook {
                 self.notes.push(note.clone());
                 log::info!("Adding note[{}] to database", note.get_id());
                 self.embed_store
-                    .add(
-                        vec![note.get_id().to_string()],
-                        vec![note.get_content().to_string()],
-                    )
+                    .add(vec![note.clone()])
                     .await
                     .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
                 log::info!("Note added to database");

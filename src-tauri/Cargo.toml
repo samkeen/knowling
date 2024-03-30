@@ -25,6 +25,7 @@ arrow-schema = "50.0.0"
 fastembed = "3.1.1"
 anyhow = "1.0.79"
 rand = "0.8.5"
+chrono = "0.4.37"
 
 
 [features]
