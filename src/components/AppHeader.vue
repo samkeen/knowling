@@ -1,8 +1,8 @@
 <template>
   <header class="bg-white shadow">
-    <div class="container mx-auto px-4 py-4 flex items-center">
+    <div class="container px-4 py-4 flex items-center">
       <div class="flex-grow">
-        <h1 class="text-2xl font-bold">My Notes App</h1>
+        <h1 class="text-2xl font-bold">Knowling</h1>
       </div>
       <nav>
         <ul class="flex space-x-4">
