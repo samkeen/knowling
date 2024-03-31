@@ -5,6 +5,8 @@
       <li v-for="note in notes" :key="note.id" class="mb-4 p-4 bg-white">
         <RouterLink :to="{ name: 'EditNote', params: { id: note.id } }">
           <p class="truncate ...">{{ noteTitle(note.text) }}</p>
+          <p>Created: {{ formatDate(note.created) }}</p>
+          <p>Modified: {{ formatDate(note.modified) }}</p>
         </RouterLink>
       </li>
     </ul>
@@ -34,6 +36,10 @@ function noteTitle(text) {
   const firstLine = lines[0];
   // remove any leading '#' or spaces
   return firstLine.replace(/^#+\s*/, '');
+}
+
+function formatDate(timestamp) {
+  return new Date(timestamp * 1000).toLocaleString();
 }
 
 onMounted(get_notes);

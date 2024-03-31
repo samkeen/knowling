@@ -30,13 +30,15 @@ pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, Noteb
 pub async fn get_note_by_id(
     notebook: State<'_, AppState>,
     id: &str,
-) -> Result<Note, NotebookError> {
+) -> Result<Option<Note>, NotebookError> {
     let notebook = notebook.notebook.lock().await;
-    let note = notebook.get_note_by_id(id);
-    note.ok_or(NotebookError::NoteNotFound(format!(
-        "No note found with id: {}",
-        id
-    )))
+    match notebook.get_note_by_id(id).await {
+        Ok(note) => Ok(note),
+        Err(e) => {
+            log::error!("Error getting note by id: {}", e);
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]
@@ -51,7 +53,7 @@ pub async fn get_note_similarities(
     id: &str,
 ) -> Result<Vec<(Note, f32)>, NotebookError> {
     let notebook = notebook.notebook.lock().await;
-    let note = notebook.get_note_by_id(id);
+    let note = notebook.get_note_by_id(id).await?;
     match note {
         Some(note) => notebook.get_note_similars(note, Some(3), Some(0.5)).await,
         None => Err(NotebookError::NoteNotFound(format!(

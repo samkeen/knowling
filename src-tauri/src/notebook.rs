@@ -11,7 +11,6 @@ const SIMILARS_DEFAULT_LIMIT: usize = 3;
 const SIMILARS_DEFAULT_THRESHOLD: f32 = 0.01;
 
 pub struct Notebook {
-    notes: Vec<Note>,
     embed_store: EmbedStore,
 }
 
@@ -20,14 +19,7 @@ impl Notebook {
         let embed_store = EmbedStore::new(text_embedding)
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        let (existing_notes, _total_records) = embed_store
-            .get_all()
-            .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
-        Ok(Notebook {
-            notes: existing_notes,
-            embed_store,
-        })
+        Ok(Notebook { embed_store })
     }
 
     pub async fn upsert_note(
@@ -37,9 +29,13 @@ impl Notebook {
     ) -> Result<Note, NotebookError> {
         match id {
             Some(id) => {
-                let note_option = self.notes.iter_mut().find(|note| note.get_id() == id);
-                match note_option {
-                    Some(note) => {
+                let existing_note = self
+                    .embed_store
+                    .get(id)
+                    .await
+                    .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                match existing_note {
+                    Some(mut note) => {
                         note.text = content.to_string();
                         self.embed_store
                             .update(vec![note.to_owned()])
@@ -55,8 +51,6 @@ impl Notebook {
             }
             None => {
                 let note = Note::new(content);
-                log::info!("Adding note[{}]", note.get_id());
-                self.notes.push(note.clone());
                 log::info!("Adding note[{}] to database", note.get_id());
                 self.embed_store
                     .add(vec![note.clone()])
@@ -69,13 +63,19 @@ impl Notebook {
     }
 
     pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
-        match self.notes.clone() {
-            notes => Ok(notes),
-        }
+        let (existing_notes, _total_records) = self
+            .embed_store
+            .get_all()
+            .await
+            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+        Ok(existing_notes)
     }
 
-    pub fn get_note_by_id(&self, id: &str) -> Option<Note> {
-        self.notes.iter().find(|&note| note.get_id() == id).cloned()
+    pub async fn get_note_by_id(&self, id: &str) -> Result<Option<Note>, NotebookError> {
+        self.embed_store
+            .get(id)
+            .await
+            .map_err(|e| NotebookError::PersistenceError(e.to_string()))
     }
 
     pub async fn delete_note(&mut self, id: &str) -> Result<(), NotebookError> {
@@ -84,7 +84,6 @@ impl Notebook {
             .delete(&vec![id])
             .await
             .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
-        self.notes.retain(|note| note.get_id() != id);
         Ok(())
     }
 
