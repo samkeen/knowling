@@ -5,7 +5,6 @@
       <div class="flex-1 overflow-y-auto p-4">
         <template v-if="noteLoaded">
           <MilkdownEditorWrapper :initialValue="noteText" @update="handleNoteUpdate"/>
-          <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
         </template>
         <template v-else>
           <div class="text-center">Loading note...</div>
@@ -39,6 +38,7 @@ import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
 import {debounce} from 'lodash-es';
 import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
+import {upsertNote} from '../lib/notebook.js';
 
 
 let noteText = ref('');
@@ -50,7 +50,7 @@ const route = useRoute();
 let noteId = ref(route.params.id || null);
 
 const debouncedSaveNote = debounce(async () => {
-  await save_note();
+  await handleSaveNote();
 }, autosaveDelay);
 
 function handleNoteUpdate(event) {
@@ -58,42 +58,10 @@ function handleNoteUpdate(event) {
   debouncedSaveNote();
 }
 
-async function save_note() {
-  if (noteId.value) {
-    try {
-      let note = await invoke("save_note", {id: noteId.value, text: noteText.value})
-      console.log("Note updated: ", note.id);
-    } catch (error) {
-      console.error("Failed saving note:", error);
-      // Handle the error as needed, e.g., show a user-friendly message
-    }
-  } else {
-    try {
-      let note = await invoke("save_note", {id: null, text: noteText.value})
-      noteId.value = note.id;
-      console.log("Note created: ", note.id);
-    } catch (error) {
-      console.error("Failed saving note:", error);
-      // Handle the error as needed, e.g., show a user-friendly message
-    }
-  }
-}
-
-async function delete_note() {
-  if (noteId) {
-    try {
-      await invoke("delete_note", {id: noteId.value})
-      console.log("Note deleted: ", noteId.value);
-      // This doesn't work for some reason??
-      // await router.push("/")
-      // So do it old skool
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Failed deleting note:", error);
-      // Handle the error as needed, e.g., show a user-friendly message
-    }
-  } else {
-    console.log("The note is not defined: ", noteId.value);
+async function handleSaveNote() {
+  const savedNoteId = await upsertNote(noteId.value, noteText.value);
+  if (!noteId.value && savedNoteId) {
+    noteId.value = savedNoteId;
   }
 }
 
