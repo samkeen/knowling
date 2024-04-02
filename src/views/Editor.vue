@@ -4,8 +4,13 @@
       <EditorToolbar/>
       <div class="flex-1 overflow-y-auto p-4">
         <template v-if="noteLoaded">
-          <MilkdownEditorWrapper :initialValue="noteText" @update="noteText = $event"/>
-          <button @click="save_note" type="submit" class="bg-blue-500 text-white py-2 px-4">Save</button>
+          <div>
+            <label>
+              <input type="checkbox" v-model="autosaveEnabled"/>
+              Enable Autosave
+            </label>
+          </div>
+          <MilkdownEditorWrapper :initialValue="noteText" @update="handleNoteUpdate"/>
           <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
         </template>
         <template v-else>
@@ -20,21 +25,47 @@
 <script setup>
 /**
  * For Layout, see: https://claude.ai/chat/72a74a4e-b343-49f7-a76e-0eabaeb0c1d7
+ *
+ * ## Autosave Functionality
+ * 1. When the user types or modifies the content in the Milkdown editor, the update event is emitted, triggering the handleNoteUpdate function.
+ * 2. Inside the handleNoteUpdate function, the noteText value is updated with the new content received from the event.
+ * 3. The debouncedSaveNote function is called, which is a debounced version of the save_note function.
+ * 4. The debounce function from lodash-es is used to create the debouncedSaveNote function. It takes two arguments: the function to be debounced (save_note) and the delay in milliseconds (autosaveDelay).
+ * 5. The debounce function works as follows:
+ *    - When debouncedSaveNote is called, it starts a timer with the specified delay (1000ms in this case).
+ *    - If debouncedSaveNote is called again within the delay period, the previous timer is canceled, and a new timer is started.
+ *    - If no further calls to debouncedSaveNote occur within the delay period, the save_note function is finally invoked.
+ * 6. This means that the save_note function is not called immediately every time the user types. Instead, it waits for a pause in the user's typing activity. If the user continues typing within the specified delay (1000ms), the previous autosave is canceled, and a new autosave is scheduled.
+ * 7. Once the user stops typing and the delay period passes without any further modifications, the save_note function is invoked, saving the note.
  */
 import Sidebar from '../components/Sidebar.vue'
 import EditorToolbar from "../components/EditorToolbar.vue";
 import {useRoute} from 'vue-router';
 import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
+import {debounce} from 'lodash-es';
 import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
 
 
 let noteText = ref('');
 let noteLoaded = ref(false);
 
+const autosaveEnabled = ref(true);
+const autosaveDelay = 1000; // Adjust the delay as needed (in milliseconds)
+
 const route = useRoute();
 const noteId = route.params.id || null;
-console.log("The note id: ", noteId);
+
+const debouncedSaveNote = debounce(async () => {
+  if (autosaveEnabled.value) {
+    await save_note();
+  }
+}, autosaveDelay);
+
+function handleNoteUpdate(event) {
+  noteText.value = event;
+  debouncedSaveNote();
+}
 
 async function save_note() {
   if (noteId) {
@@ -90,6 +121,4 @@ onMounted(async () => {
     noteLoaded.value = true;
   }
 });
-
-
 </script>
