@@ -9,11 +9,14 @@ pub async fn save_note(
     notebook: State<'_, AppState>,
     id: Option<&str>,
     text: &str,
-) -> Result<String, String> {
+) -> Result<Note, String> {
     log::info!("Saving note: '{}'", text);
     let mut notebook = notebook.notebook.lock().await;
     match notebook.upsert_note(id, text).await {
-        Ok(note) => Ok(format!("Note[{}] recorded", note.get_id())),
+        Ok(note) => {
+            log::info!("Note[{}] saved", note.id);
+            Ok(note)
+        }
         Err(e) => Err(format!("Error: {}", e)),
     }
 }

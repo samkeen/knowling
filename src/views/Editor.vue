@@ -54,7 +54,7 @@ const autosaveEnabled = ref(true);
 const autosaveDelay = 1000; // Adjust the delay as needed (in milliseconds)
 
 const route = useRoute();
-const noteId = route.params.id || null;
+let noteId = ref(route.params.id || null);
 
 const debouncedSaveNote = debounce(async () => {
   if (autosaveEnabled.value) {
@@ -68,9 +68,9 @@ function handleNoteUpdate(event) {
 }
 
 async function save_note() {
-  if (noteId) {
+  if (noteId.value) {
     try {
-      let note = await invoke("save_note", {id: noteId, text: noteText.value})
+      let note = await invoke("save_note", {id: noteId.value, text: noteText.value})
       console.log("Note updated: ", note.id);
     } catch (error) {
       console.error("Failed saving note:", error);
@@ -78,7 +78,8 @@ async function save_note() {
     }
   } else {
     try {
-      let note = await invoke("save_note", {id: noteId, text: noteText.value})
+      let note = await invoke("save_note", {id: null, text: noteText.value})
+      noteId.value = note.id;
       console.log("Note created: ", note.id);
     } catch (error) {
       console.error("Failed saving note:", error);
@@ -90,8 +91,8 @@ async function save_note() {
 async function delete_note() {
   if (noteId) {
     try {
-      await invoke("delete_note", {id: noteId})
-      console.log("Note deleted: ", noteId);
+      await invoke("delete_note", {id: noteId.value})
+      console.log("Note deleted: ", noteId.value);
       // This doesn't work for some reason??
       // await router.push("/")
       // So do it old skool
@@ -101,15 +102,15 @@ async function delete_note() {
       // Handle the error as needed, e.g., show a user-friendly message
     }
   } else {
-    console.log("The note is not defined: ", noteId);
+    console.log("The note is not defined: ", noteId.value);
   }
 }
 
 onMounted(async () => {
-  if (noteId) {
-    console.log("The note id: ", noteId);
+  if (noteId.value) {
+    console.log("The note id: ", noteId.value);
     try {
-      const note = await invoke("get_note_by_id", {id: noteId});
+      const note = await invoke("get_note_by_id", {id: noteId.value});
       noteText.value = note.text;
       noteLoaded.value = true;
     } catch (error) {
