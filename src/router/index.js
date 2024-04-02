@@ -10,7 +10,7 @@ const router = createRouter({
             component: HomeView,
         },
         {
-            path: "/note",
+            path: "/note/:new", // :new is a fake/unused param, see AppHeader.vue
             name: "NewNote",
             // route level code-splitting (this gives us lazy loading so not all routes are loaded at once)
             component: () => import("../views/Editor.vue"),

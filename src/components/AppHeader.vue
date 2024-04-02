@@ -10,13 +10,29 @@
             <RouterLink :to="{name: 'Home'}" class="">Notes</RouterLink>
           </li>
           <li>
-            <RouterLink :to="{name: 'NewNote'}" class="">+</RouterLink>
+            <button @click="navigateToNewNote" class="">+</button>
           </li>
         </ul>
       </nav>
     </div>
   </header>
 </template>
+
 <script setup>
-import {RouterLink} from 'vue-router'
+import {RouterLink, useRouter} from 'vue-router'
+
+const router = useRouter()
+
+/**
+ * ## Make all NewNote routes unique
+ * Navigate to the NewNote route with a timestamp as a parameter
+ * This is needed (in addition to using :key (<router-view :key="route.path">)
+ * in App.vue to convince Vue to re-render Editor.vue when in the case we are
+ * already on Editor.vue and we navigate to a new note.
+ */
+function navigateToNewNote() {
+  const timestamp = Date.now().toString()
+  console.log(timestamp)
+  router.push({name: 'NewNote', params: {new: timestamp}})
+}
 </script>

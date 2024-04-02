@@ -110,6 +110,7 @@ onMounted(async () => {
     }
   } else {
     console.log("The note id is not defined");
+    noteText.value = ''; // Initialize noteText.value with an empty string for new notes
     noteLoaded.value = true;
   }
 });
