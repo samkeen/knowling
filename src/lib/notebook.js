@@ -35,3 +35,24 @@ export async function upsertNote(noteId, noteText) {
         }
     }
 }
+
+export async function getRelatedNotes(noteId) {
+    try {
+        const results = await invoke('get_note_similarities', {id: noteId});
+        return results.map(([note, similarityScore]) => ({
+            note,
+            similarityScore,
+        }));
+    } catch (error) {
+        console.error('Failed to get related notes:', error);
+        // Handle the error as needed, e.g., show a user-friendly message
+        return [];
+    }
+}
+
+export function noteTitle(text) {
+    const lines = text.split('\n');
+    const firstLine = lines[0];
+    // remove any leading '#' or spaces
+    return firstLine.replace(/^#+\s*/, '');
+}

@@ -15,9 +15,10 @@
 </template>
 
 <script setup>
-import {onMounted, ref, computed} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
-import {RouterLink, createWebHistory} from "vue-router";
+import {RouterLink} from "vue-router";
+import {noteTitle} from "../lib/notebook.js";
 
 const notes = ref([]);
 
@@ -95,13 +96,6 @@ function isSameMonth(date1, date2) {
 
 function formatMonthYear(date) {
   return date.toLocaleString('default', {month: 'long', year: 'numeric'});
-}
-
-function noteTitle(text) {
-  const lines = text.split('\n');
-  const firstLine = lines[0];
-  // remove any leading '#' or spaces
-  return firstLine.replace(/^#+\s*/, '');
 }
 
 onMounted(get_notes);
