@@ -30,6 +30,17 @@ pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, Noteb
 }
 
 #[tauri::command]
+pub async fn export_notes(
+    notebook: State<'_, AppState>,
+    export_path: &str,
+) -> Result<usize, NotebookError> {
+    let notebook = notebook.notebook.lock().await;
+    let num_exported = notebook.export_notes(export_path).await?;
+    log::info!("Exported [{}] existing notes", num_exported);
+    Ok(num_exported)
+}
+
+#[tauri::command]
 pub async fn get_note_by_id(
     notebook: State<'_, AppState>,
     id: &str,

@@ -2,7 +2,9 @@ use crate::notebook::db::{EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
 use fastembed::TextEmbedding;
 use serde::Serialize;
-use std::fmt;
+use std::io::Write;
+use std::path::Path;
+use std::{fmt, fs};
 
 mod db;
 pub mod note;
@@ -126,11 +128,86 @@ impl Notebook {
         );
         Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
     }
+
+    pub async fn export_notes(&self, export_path: &str) -> Result<usize, NotebookError> {
+        // Check if export_path is writable
+        let path = Path::new(export_path);
+        if !path.is_dir()
+            || !path
+                .metadata()
+                .map_err(|e| NotebookError::FileAccess(e.to_string()))?
+                .permissions()
+                .readonly()
+        {
+            return Err(NotebookError::FileAccess(format!(
+                "Cannot write to export_path: {}",
+                export_path
+            )));
+        }
+
+        // Create folder knowling_export at export_path
+        let export_dir = path.join("knowling_export");
+        fs::create_dir_all(&export_dir).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+
+        // Retrieve all notes
+        let notes = self.get_notes().await?;
+
+        // For each note write the file to export_path
+        for (index, note) in notes.iter().enumerate() {
+            let mut note_title = self.note_title(&note);
+            let mut note_file_path = export_dir.join(format!("{}.md", note_title));
+
+            // If file of the same name exists, append a suffix
+            if note_file_path.exists() {
+                note_title = format!("{}-dupe_{}", note_title, index);
+                note_file_path = export_dir.join(format!("{}.md", note_title));
+            }
+
+            // Write file to {export_path}/knowling_export/{note_title}.md
+            let mut file = fs::File::create(note_file_path)
+                .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+            file.write_all(note.text.as_bytes())
+                .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+        }
+
+        Ok(notes.len())
+    }
+
+    fn note_title(&self, note: &Note) -> String {
+        let mut title = note.text.lines().next().unwrap_or("").to_string();
+
+        // Strip any leading "#" or spaces from the title
+        while title.starts_with('#') || title.starts_with(' ') {
+            title.remove(0);
+        }
+
+        // Replace any characters not suitable for a file name with "_"
+        title = title
+            .chars()
+            .map(|c| match c {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => c,
+                _ => '_',
+            })
+            .collect();
+
+        // Ensure the final title string does not have multiple "_"'s in a row
+        while title.contains("__") {
+            title = title.replace("__", "_");
+        }
+
+        // If title is longer than 100 characters, take the first 50 and the last 50, combine them with a "..." in the middle
+        if title.len() > 100 {
+            title = format!("{}...{}", &title[..50], &title[(title.len() - 50)..]);
+        }
+
+        title
+    }
 }
 
 #[derive(Debug, Serialize)]
 pub enum NotebookError {
     PersistenceError(String),
+    FileAccess(String),
     EmbeddingError(String),
     TableCreationError(String),
     NoteNotFound(String),
@@ -140,6 +217,7 @@ impl fmt::Display for NotebookError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             NotebookError::PersistenceError(e) => write!(f, "Persistence error: {}", e),
+            NotebookError::FileAccess(e) => write!(f, "FileAccess error: {}", e),
             NotebookError::EmbeddingError(e) => write!(f, "Embedding error: {}", e),
             NotebookError::TableCreationError(e) => write!(f, "Table creation error: {}", e),
             NotebookError::NoteNotFound(e) => write!(f, "Table creation error: {}", e),

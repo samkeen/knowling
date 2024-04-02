@@ -3,7 +3,8 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "devPath": "http://localhost:1420",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "nova-notes",
@@ -15,11 +16,27 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "dialog": {
+        "all": true,
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "renameFile": true,
+        "scope": [
+          "$DESKTOP/*"
+        ]
       }
     },
     "windows": [
       {
-        "title": "nova-notes",
+        "title": "Knowling",
         "width": 800,
         "height": 600
       }

@@ -12,6 +12,12 @@
           <li>
             <button @click="navigateToNewNote" class="">+</button>
           </li>
+          <li>
+            <RouterLink :to="{name: 'Settings'}" class="">
+              <img src="/settings.svg" alt="Settings"/>
+            </RouterLink>
+          </li>
+
         </ul>
       </nav>
     </div>
@@ -35,4 +41,5 @@ function navigateToNewNote() {
   console.log(timestamp)
   router.push({name: 'NewNote', params: {new: timestamp}})
 }
+
 </script>
