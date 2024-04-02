@@ -4,12 +4,6 @@
       <EditorToolbar/>
       <div class="flex-1 overflow-y-auto p-4">
         <template v-if="noteLoaded">
-          <div>
-            <label>
-              <input type="checkbox" v-model="autosaveEnabled"/>
-              Enable Autosave
-            </label>
-          </div>
           <MilkdownEditorWrapper :initialValue="noteText" @update="handleNoteUpdate"/>
           <button @click="delete_note" type="submit" class="bg-red-500 text-white py-2 px-4 ml-3">Delete</button>
         </template>
@@ -50,16 +44,13 @@ import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
 let noteText = ref('');
 let noteLoaded = ref(false);
 
-const autosaveEnabled = ref(true);
 const autosaveDelay = 1000; // Adjust the delay as needed (in milliseconds)
 
 const route = useRoute();
 let noteId = ref(route.params.id || null);
 
 const debouncedSaveNote = debounce(async () => {
-  if (autosaveEnabled.value) {
-    await save_note();
-  }
+  await save_note();
 }, autosaveDelay);
 
 function handleNoteUpdate(event) {
