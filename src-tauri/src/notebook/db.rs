@@ -29,7 +29,7 @@ const COLUMN_TEXT: &str = "text";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Document {
-    pub id: String,
+    pub(crate) id: String,
     pub text: String,
     pub created: i64,
     pub modified: i64,
