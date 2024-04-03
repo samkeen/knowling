@@ -1,6 +1,8 @@
 use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
 use crate::AppState;
+use std::fs;
+use tauri::api::path::desktop_dir;
 use tauri::State;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -30,12 +32,12 @@ pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, Noteb
 }
 
 #[tauri::command]
-pub async fn export_notes(
-    notebook: State<'_, AppState>,
-    export_path: &str,
-) -> Result<usize, NotebookError> {
+pub async fn export_notes(notebook: State<'_, AppState>) -> Result<usize, NotebookError> {
     let notebook = notebook.notebook.lock().await;
-    let num_exported = notebook.export_notes(export_path).await?;
+    let target_dir = desktop_dir().ok_or(NotebookError::FileAccess(
+        "Failed to get desktop directory".to_string(),
+    ))?;
+    let num_exported = notebook.export_notes(target_dir).await?;
     log::info!("Exported [{}] existing notes", num_exported);
     Ok(num_exported)
 }

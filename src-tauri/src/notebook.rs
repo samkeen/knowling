@@ -1,9 +1,10 @@
 use crate::notebook::db::{EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
+use chrono::Utc;
 use fastembed::TextEmbedding;
 use serde::Serialize;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
 mod db;
@@ -129,24 +130,19 @@ impl Notebook {
         Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
     }
 
-    pub async fn export_notes(&self, export_path: &str) -> Result<usize, NotebookError> {
+    pub async fn export_notes(&self, export_path: PathBuf) -> Result<usize, NotebookError> {
         // Check if export_path is writable
-        let path = Path::new(export_path);
-        if !path.is_dir()
-            || !path
-                .metadata()
-                .map_err(|e| NotebookError::FileAccess(e.to_string()))?
-                .permissions()
-                .readonly()
-        {
+        if !self.is_writable(&export_path) {
             return Err(NotebookError::FileAccess(format!(
-                "Cannot write to export_path: {}",
+                "{:?} is not writable",
                 export_path
             )));
         }
 
         // Create folder knowling_export at export_path
-        let export_dir = path.join("knowling_export");
+        let timestamp = Utc::now().format("%Y%m%d%H%M%S").to_string();
+        let export_dir_name = format!("knowling_export_{}", timestamp);
+        let export_dir = export_path.join(&export_dir_name);
         fs::create_dir_all(&export_dir).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
 
         // Retrieve all notes
@@ -201,6 +197,16 @@ impl Notebook {
         }
 
         title
+    }
+    fn is_writable(&self, path: &PathBuf) -> bool {
+        if let Ok(metadata) = fs::metadata(path) {
+            if metadata.is_dir() {
+                if let Ok(permissions) = fs::metadata(path).map(|m| m.permissions()) {
+                    return permissions.readonly() == false;
+                }
+            }
+        }
+        false
     }
 }
 

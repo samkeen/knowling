@@ -3,12 +3,11 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": true
+    "distDir": "../dist"
   },
   "package": {
-    "productName": "nova-notes",
-    "version": "0.0.0"
+    "productName": "knowling",
+    "version": "0.1.0"
   },
   "tauri": {
     "allowlist": {
@@ -16,22 +15,6 @@
       "shell": {
         "all": false,
         "open": true
-      },
-      "dialog": {
-        "all": true,
-        "open": true,
-        "save": true
-      },
-      "fs": {
-        "all": false,
-        "readFile": true,
-        "writeFile": true,
-        "readDir": true,
-        "createDir": true,
-        "renameFile": true,
-        "scope": [
-          "$DESKTOP/*"
-        ]
       }
     },
     "windows": [

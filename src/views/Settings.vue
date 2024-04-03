@@ -12,17 +12,8 @@ import {open} from "@tauri-apps/api/dialog";
 
 async function exportNotes() {
   try {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      defaultPath: ".",
-    });
-
-    if (selected) {
-      const exportPath = selected;
-      let result = await invoke("export_notes", {exportPath: exportPath});
-      console.log("All notes exported:", result);
-    }
+    let result = await invoke("export_notes");
+    console.log("All notes exported:", result);
   } catch (error) {
     console.error("Failed exporting notes:", error);
   }
