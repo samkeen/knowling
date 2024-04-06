@@ -3,14 +3,15 @@
 
 mod commands;
 mod notebook;
+mod utils;
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
+use crate::utils::{get_user_app_dir, set_panic_hook};
 use commands::{delete_note, export_notes, get_note_by_id, get_notes, save_note};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use log::error;
 use log::LevelFilter;
-use std::path::{Path, PathBuf};
+use std::io::Write;
 use std::sync::Arc;
 use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
@@ -29,13 +30,13 @@ const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::LogDir];
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 fn main() {
-    std::panic::set_hook(Box::new(|info| {
-        error!("Panicked: {:?}", info);
-    }));
+    let app_dir = get_user_app_dir();
+    set_panic_hook(&app_dir);
+
     let text_embedding = TextEmbedding::try_new(InitOptions {
         model_name: EmbeddingModel::AllMiniLML6V2,
         show_download_progress: true,
-        cache_dir: PathBuf::from(Path::new("../llm-cache")),
+        cache_dir: app_dir.join("llm-cache"),
         ..Default::default()
     })
     .unwrap();
@@ -45,7 +46,9 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async {
-            let notebook = Arc::new(Mutex::new(Notebook::new(text_embedding).await.unwrap()));
+            let notebook = Arc::new(Mutex::new(
+                Notebook::new(text_embedding, &app_dir).await.unwrap(),
+            ));
             AppState { notebook }
         });
 

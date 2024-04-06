@@ -18,8 +18,11 @@ pub struct Notebook {
 }
 
 impl Notebook {
-    pub async fn new(text_embedding: TextEmbedding) -> Result<Self, NotebookError> {
-        let embed_store = EmbedStore::new(text_embedding)
+    pub async fn new(
+        text_embedding: TextEmbedding,
+        data_store_path: &Path,
+    ) -> Result<Self, NotebookError> {
+        let embed_store = EmbedStore::new(text_embedding, data_store_path)
             .await
             .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
         Ok(Notebook { embed_store })

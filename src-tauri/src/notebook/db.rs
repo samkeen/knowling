@@ -17,10 +17,10 @@ use serde::Serialize;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
+use std::path::Path;
 use std::sync::Arc;
 
-const DB_DIR: &str = "../data";
-const DB_NAME: &str = "sample-lancedb";
+const DB_NAME: &str = "lancedb_storage";
 const TABLE_NAME: &str = "documents";
 const EMBEDDING_DIMENSIONS: usize = 384;
 const COLUMN_ID: &str = "id";
@@ -131,8 +131,11 @@ impl From<anyhow::Error> for EmbedStoreError {
 }
 
 impl EmbedStore {
-    pub async fn new(embedding_model: TextEmbedding) -> Result<EmbedStore, EmbedStoreError> {
-        let db_conn = Self::init_db_conn().await?;
+    pub async fn new(
+        embedding_model: TextEmbedding,
+        storage_path: &Path,
+    ) -> Result<EmbedStore, EmbedStoreError> {
+        let db_conn = Self::init_db_conn(storage_path).await?;
         let table = Self::get_or_create_table(&db_conn, TABLE_NAME).await?;
         Ok(EmbedStore {
             embedding_model,
@@ -386,11 +389,15 @@ impl EmbedStore {
         Ok(documents)
     }
 
-    async fn init_db_conn() -> Result<Connection, EmbedStoreError> {
-        let db_path = format!("{}/{}", DB_DIR, DB_NAME);
-        log::info!("Connecting to db at path: '{}'", db_path);
-        let db_conn = connect(db_path.as_str()).execute().await?;
-        Ok(db_conn)
+    async fn init_db_conn(data_dir: &Path) -> Result<Connection, EmbedStoreError> {
+        let db_path = data_dir.join(DB_NAME);
+        log::info!("Connecting to db at path: '{:?}'", db_path);
+        match db_path.to_str() {
+            None => Err(Runtime(
+                format!("Failed to convert db_path: {:?} to string", db_path).to_string(),
+            )),
+            Some(path) => Ok(connect(path).execute().await?),
+        }
     }
 
     fn create_embeddings(&self, documents: &[String]) -> Result<Vec<Embedding>, EmbedStoreError> {
