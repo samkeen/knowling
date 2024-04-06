@@ -38,7 +38,6 @@ const router = useRouter()
  */
 function navigateToNewNote() {
   const timestamp = Date.now().toString()
-  console.log(timestamp)
   router.push({name: 'NewNote', params: {new: timestamp}})
 }
 

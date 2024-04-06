@@ -19,13 +19,14 @@ import {computed, onMounted, ref} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {RouterLink} from "vue-router";
 import {noteTitle} from "../lib/notebook.js";
+import {info} from "tauri-plugin-log-api";
 
 const notes = ref([]);
 
 async function get_notes() {
   try {
     let result = await invoke("get_notes");
-    console.log("The all notes result: ", result);
+    info("The all notes result: ", result);
     notes.value = result;
   } catch (error) {
     console.error("Failed getting notes:", error);

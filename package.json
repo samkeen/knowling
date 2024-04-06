@@ -1,7 +1,7 @@
 {
-  "name": "nova-notes",
+  "name": "knowling",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,7 @@
     "@tauri-apps/api": "^1",
     "lodash-es": "^4.17.21",
     "marked": "^12.0.1",
+    "tauri-plugin-log-api": "github:tauri-apps/tauri-plugin-log#v1",
     "vue": "^3.3.4",
     "vue-router": "^4.3.0"
   },

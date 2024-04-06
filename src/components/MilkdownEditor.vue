@@ -48,6 +48,7 @@ import {listener, listenerCtx} from '@milkdown/plugin-listener'
 // import sql from 'refractor/lang/sql'
 // import tsx from 'refractor/lang/tsx'
 // import markdown from 'refractor/lang/markdown'
+import {info} from "tauri-plugin-log-api";
 
 // Editor markdown preset
 // const value = ref('')
@@ -79,17 +80,17 @@ useEditor((root) =>
               const listener = ctx.get(listenerCtx)
               listener.markdownUpdated((ctx, markdown, prevMarkdown) => {
                 if (markdown !== prevMarkdown) {
-                  console.log("[updated]: ", markdown)
+                  info("[updated]: ", markdown)
                   emit('update', markdown);
                   editorContent.value = markdown
                 }
               })
               listener.blur(() => {
-                console.log("[blur]")
+                info("[blur]")
                 isEditorFocus.value = false
               })
               listener.focus(() => {
-                console.log("[focus]")
+                info("[focus]")
                 isEditorFocus.value = true
               })
 

@@ -8,8 +8,11 @@ use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
 use commands::{delete_note, export_notes, get_note_by_id, get_notes, save_note};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use log::error;
+use log::LevelFilter;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -17,11 +20,18 @@ pub struct AppState {
     // See https://github.com/tauri-apps/tauri/discussions/1336#discussioncomment-1936523
     pub notebook: Arc<Mutex<Notebook>>,
 }
+// adapt log tagets based on prod/non-prod
+#[cfg(debug_assertions)]
+const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::Webview];
+#[cfg(not(debug_assertions))]
+const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::LogDir];
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 fn main() {
-    env_logger::init();
+    std::panic::set_hook(Box::new(|info| {
+        error!("Panicked: {:?}", info);
+    }));
     let text_embedding = TextEmbedding::try_new(InitOptions {
         model_name: EmbeddingModel::AllMiniLML6V2,
         show_download_progress: true,
@@ -40,6 +50,12 @@ fn main() {
         });
 
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .targets(LOG_TARGETS)
+                .level(LevelFilter::Info)
+                .build(),
+        )
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             save_note,

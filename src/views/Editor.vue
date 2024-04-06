@@ -39,7 +39,7 @@ import {onMounted, ref} from "vue";
 import {debounce} from 'lodash-es';
 import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
 import {upsertNote} from '../lib/notebook.js';
-
+import {info} from "tauri-plugin-log-api";
 
 let noteText = ref('');
 let noteLoaded = ref(false);
@@ -67,7 +67,7 @@ async function handleSaveNote() {
 
 onMounted(async () => {
   if (noteId.value) {
-    console.log("The note id: ", noteId.value);
+    info("The note id: ", noteId.value);
     try {
       const note = await invoke("get_note_by_id", {id: noteId.value});
       noteText.value = note.text;
@@ -77,7 +77,7 @@ onMounted(async () => {
       // Handle the error as needed, e.g., show a user-friendly message
     }
   } else {
-    console.log("The note id is not defined");
+    info("The note id is not defined");
     noteText.value = ''; // Initialize noteText.value with an empty string for new notes
     noteLoaded.value = true;
   }

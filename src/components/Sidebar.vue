@@ -13,6 +13,7 @@
 import {RouterLink} from 'vue-router'
 import {ref, defineProps, onMounted} from 'vue';
 import {noteTitle, getRelatedNotes} from '../lib/notebook.js';
+import {info} from "tauri-plugin-log-api";
 
 const props = defineProps({
   noteId: {
@@ -26,12 +27,12 @@ const relatedNotes = ref([]);
 
 async function fetchRelatedNotes(noteId) {
   relatedNotes.value = await getRelatedNotes(noteId);
-  console.log('Related notes:', relatedNotes.value);
+  info('Related notes:', relatedNotes.value);
 }
 
 onMounted(() => {
   if (props.noteId) {
-    console.log('Getting related notes for:', props.noteId);
+    info('Getting related notes for:', props.noteId);
     fetchRelatedNotes(props.noteId);
   }
 });

@@ -8,12 +8,12 @@
 
 <script setup>
 import {invoke} from "@tauri-apps/api/tauri";
-import {open} from "@tauri-apps/api/dialog";
+import {info} from "tauri-plugin-log-api";
 
 async function exportNotes() {
   try {
     let result = await invoke("export_notes");
-    console.log("All notes exported:", result);
+    info("All notes exported:", result);
   } catch (error) {
     console.error("Failed exporting notes:", error);
   }
