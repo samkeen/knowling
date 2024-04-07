@@ -8,7 +8,7 @@ mod utils;
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
 use crate::utils::{get_user_app_dir, set_panic_hook};
-use commands::{delete_note, export_notes, get_note_by_id, get_notes, save_note};
+use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, save_note};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use log::LevelFilter;
 use std::io::Write;
@@ -64,6 +64,7 @@ fn main() {
             save_note,
             get_notes,
             export_notes,
+            import_notes,
             get_note_by_id,
             get_note_similarities,
             delete_note,

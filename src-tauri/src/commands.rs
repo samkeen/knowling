@@ -1,8 +1,8 @@
 use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
 use crate::AppState;
-use std::fs;
-use tauri::api::path::desktop_dir;
+use std::path::PathBuf;
+use tauri::api::path::download_dir;
 use tauri::State;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -32,14 +32,30 @@ pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, Noteb
 }
 
 #[tauri::command]
-pub async fn export_notes(notebook: State<'_, AppState>) -> Result<usize, NotebookError> {
+pub async fn export_notes(notebook: State<'_, AppState>) -> Result<(usize, String), NotebookError> {
     let notebook = notebook.notebook.lock().await;
-    let target_dir = desktop_dir().ok_or(NotebookError::FileAccess(
-        "Failed to get desktop directory".to_string(),
+    let target_dir = download_dir().ok_or(NotebookError::FileAccess(
+        "Failed to resolve path to downloads directory".to_string(),
     ))?;
-    let num_exported = notebook.export_notes(target_dir).await?;
-    log::info!("Exported [{}] existing notes", num_exported);
-    Ok(num_exported)
+    let export_result = notebook.export_notes(target_dir.clone()).await?;
+    log::info!(
+        "Exported [{}] existing notes to {}",
+        export_result.0,
+        export_result.1
+    );
+    Ok(export_result)
+}
+
+#[tauri::command]
+pub async fn import_notes(
+    notebook: State<'_, AppState>,
+    path: &str,
+) -> Result<usize, NotebookError> {
+    log::info!("Attempting import of notes from: {}", path);
+    let notebook = notebook.notebook.lock().await;
+    let num_imports = notebook.import_notes(&PathBuf::from(path)).await?;
+    log::info!("Imported [{}] notes from {}", num_imports, path);
+    Ok(num_imports)
 }
 
 #[tauri::command]

@@ -1,6 +1,4 @@
 use crate::notebook::db::Document;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 
 /// Alias the Document type to Note
 pub type Note = Document;

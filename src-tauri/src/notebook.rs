@@ -133,8 +133,10 @@ impl Notebook {
         Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
     }
 
-    pub async fn export_notes(&self, export_path: PathBuf) -> Result<usize, NotebookError> {
-        // Check if export_path is writable
+    pub async fn export_notes(
+        &self,
+        export_path: PathBuf,
+    ) -> Result<(usize, String), NotebookError> {
         if !self.is_writable(&export_path) {
             return Err(NotebookError::FileAccess(format!(
                 "{:?} is not writable",
@@ -142,34 +144,61 @@ impl Notebook {
             )));
         }
 
-        // Create folder knowling_export at export_path
-        let timestamp = Utc::now().format("%Y%m%d%H%M%S").to_string();
-        let export_dir_name = format!("knowling_export_{}", timestamp);
-        let export_dir = export_path.join(&export_dir_name);
-        fs::create_dir_all(&export_dir).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-
-        // Retrieve all notes
+        let export_dir = self.create_export_directory(&export_path)?;
         let notes = self.get_notes().await?;
 
-        // For each note write the file to export_path
         for (index, note) in notes.iter().enumerate() {
             let mut note_title = self.note_title(&note);
             let mut note_file_path = export_dir.join(format!("{}.md", note_title));
 
-            // If file of the same name exists, append a suffix
             if note_file_path.exists() {
                 note_title = format!("{}-dupe_{}", note_title, index);
                 note_file_path = export_dir.join(format!("{}.md", note_title));
             }
 
-            // Write file to {export_path}/knowling_export/{note_title}.md
-            let mut file = fs::File::create(note_file_path)
-                .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-            file.write_all(note.text.as_bytes())
-                .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+            self.write_note_to_file(&note, &note_file_path)?;
         }
 
-        Ok(notes.len())
+        Ok((notes.len(), export_dir.to_string_lossy().into_owned()))
+    }
+
+    pub async fn import_notes(&self, import_path: &Path) -> Result<usize, NotebookError> {
+        if !import_path.exists() {
+            return Err(NotebookError::FileAccess(format!(
+                "{:?} does not exist",
+                import_path
+            )));
+        }
+
+        if !import_path.is_dir() {
+            return Err(NotebookError::FileAccess(format!(
+                "{:?} is not a directory",
+                import_path
+            )));
+        }
+
+        let mut imported_notes = Vec::new();
+
+        for entry in
+            fs::read_dir(&import_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?
+        {
+            let entry = entry.map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+            let path = entry.path();
+
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+                let content = fs::read_to_string(&path)
+                    .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+                let note = Note::new(&content);
+                imported_notes.push(note);
+            }
+        }
+
+        self.embed_store
+            .add(imported_notes.clone())
+            .await
+            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+
+        Ok(imported_notes.len())
     }
 
     fn note_title(&self, note: &Note) -> String {
@@ -196,7 +225,8 @@ impl Notebook {
 
         // If title is longer than 100 characters, take the first 50 and the last 50, combine them with a "..." in the middle
         if title.len() > 100 {
-            title = format!("{}...{}", &title[..50], &title[(title.len() - 50)..]);
+            let (start, end) = title.split_at(50);
+            title = format!("{}...{}", start, end.split_at(end.len() - 50).1);
         }
 
         title
@@ -210,6 +240,22 @@ impl Notebook {
             }
         }
         false
+    }
+
+    fn create_export_directory(&self, export_path: &PathBuf) -> Result<PathBuf, NotebookError> {
+        let timestamp = Utc::now().format("%Y%m%d%H%M%S").to_string();
+        let export_dir_name = format!("knowling_export_{}", timestamp);
+        let export_dir = export_path.join(&export_dir_name);
+        fs::create_dir_all(&export_dir).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+        Ok(export_dir)
+    }
+
+    fn write_note_to_file(&self, note: &Note, file_path: &PathBuf) -> Result<(), NotebookError> {
+        let mut file =
+            fs::File::create(file_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+        file.write_all(note.text.as_bytes())
+            .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
+        Ok(())
     }
 }
 
