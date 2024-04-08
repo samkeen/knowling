@@ -4,7 +4,7 @@
     <div v-for="(group, groupName) in groupedNotes" :key="groupName">
       <h3 class="text-xl font-bold mb-2">{{ groupName }}</h3>
       <ul>
-        <li v-for="note in group" :key="note.id" class="p-2 bg-white">
+        <li v-for="note in group" :key="note.id" class="p-2">
           <RouterLink :to="{ name: 'EditNote', params: { id: note.id } }">
             <p class="truncate ...">{{ noteTitle(note.text) }}</p>
           </RouterLink>

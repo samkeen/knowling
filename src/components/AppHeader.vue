@@ -1,5 +1,5 @@
 <template>
-  <header class="bg-white shadow">
+  <header class="shadow">
     <div class="container px-4 py-4 flex items-center">
       <div class="flex-grow">
         <h1 class="text-2xl font-bold">Knowling</h1>
@@ -14,7 +14,7 @@
           </li>
           <li>
             <RouterLink :to="{name: 'Settings'}" class="">
-              <img src="/settings.svg" alt="Settings"/>
+              <img src="/settings.svg" alt="Settings" class=""/>
             </RouterLink>
           </li>
 

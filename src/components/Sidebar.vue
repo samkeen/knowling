@@ -1,5 +1,5 @@
 <template>
-  <div class="w-72 bg-gray-100 pl-4">
+  <div class="w-72 pl-4">
     <h2 class="text-xl font-bold mb-4">Related</h2>
     <ul>
       <li v-for="result in relatedNotes" :key="result.note.id">
