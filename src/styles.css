@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html[data-theme="dark"] img.icon {
+    filter: invert(1);
+}

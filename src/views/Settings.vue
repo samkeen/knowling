@@ -1,40 +1,55 @@
 <template>
   <div class="mb-8 ml-8 mt-2">
-    <h2 class="text-xl font-bold">Settings</h2>
+    <h2 class="text-xl font-bold mb-5">Settings</h2>
     <h3 class="text-lg font-bold">Content</h3>
     <div class="mb-4">
-      <button @click="exportNotes" class="font-bold py-2 px-4 rounded"
+      <button @click="exportNotes" class="btn btn-outline"
               :disabled="isExporting || isImporting">
         <span v-if="isExporting" class="spinner"></span>
         <span v-else>Export content</span>
       </button>
-      <p v-if="exportResult" class="mt-2 text-green-600">{{ exportResult }}</p>
+      <div v-if="exportResult" role="alert" class="alert max-w-fit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="whitespace-nowrap">{{ exportResult }}</span>
+        <button @click="closeAlert('export')" class="btn btn-sm ml-4">X</button>
+      </div>
+      <!--      <p v-if="exportResult" class="mt-2 text-green-600">{{ exportResult }}</p>-->
       <p v-if="exportError" class="mt-2 text-red-600">{{ exportError }}</p>
     </div>
     <div>
-      <button @click="importNotes" class="font-bold py-2 px-4 rounded"
+      <button @click="importNotes" class="btn btn-outline"
               :disabled="isImporting || isExporting">
         <span v-if="isImporting" class="spinner"></span>
         <span v-else>Import content</span>
       </button>
-      <p v-if="importResult" class="mt-2 text-green-600">{{ importResult }}</p>
+      <div v-if="importResult" role="alert" class="alert max-w-fit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="whitespace-nowrap">{{ importResult }}</span>
+        <button @click="closeAlert('import')" class="btn btn-sm ml-4">X</button>
+      </div>
       <p v-if="importError" class="mt-2 text-red-600">{{ importError }}</p>
     </div>
     <h3 class="text-lg font-bold mt-4">Theme</h3>
     <div class="flex items-center space-x-4">
       <button @click="setTheme('light')" class="flex items-center space-x-2"
               :class="{'text-blue-500': theme === 'light'}">
-        <img src="/light-theme.svg" alt="Light Theme" class="w-6 h-6">
+        <img src="/light-theme.svg" alt="Light Theme" class="w-6 h-6 icon">
         <span>Light</span>
       </button>
       <button @click="setTheme('dark')" class="flex items-center space-x-2"
               :class="{'text-blue-500': theme === 'dark'}">
-        <img src="/dark-theme.svg" alt="Dark Theme" class="w-6 h-6">
+        <img src="/dark-theme.svg" alt="Dark Theme" class="w-6 h-6 icon">
         <span>Dark</span>
       </button>
       <button @click="setTheme('system')" class="flex items-center space-x-2"
               :class="{'text-blue-500': theme === 'system'}">
-        <img src="/system-theme.svg" alt="System Theme" class="w-6 h-6">
+        <img src="/system-theme.svg" alt="System Theme" class="w-6 h-6 icon">
         <span>System</span>
       </button>
     </div>
@@ -70,6 +85,14 @@ async function exportNotes() {
     exportResult.value = ''; // Clear any previous result message
   } finally {
     isExporting.value = false;
+  }
+}
+
+function closeAlert(alertType) {
+  if (alertType === 'export') {
+    exportResult.value = '';
+  } else if (alertType === 'import') {
+    importResult.value = '';
   }
 }
 
@@ -122,7 +145,7 @@ onMounted(() => {
     theme.value = storedTheme;
   }
   updateHtmlTheme();
-});:xor
+});
 </script>
 <style scoped>
 .spinner {

@@ -14,7 +14,7 @@
           </li>
           <li>
             <RouterLink :to="{name: 'Settings'}" class="">
-              <img src="/settings.svg" alt="Settings" class=""/>
+              <img src="/settings.svg" alt="Settings" class="icon"/>
             </RouterLink>
           </li>
 
