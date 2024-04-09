@@ -16,7 +16,7 @@ import {nord} from "@milkdown/theme-nord";
 import {listener, listenerCtx} from '@milkdown/plugin-listener'
 // import {clipboard} from '@milkdown/plugin-clipboard'
 // import {indent} from '@milkdown/plugin-indent'
-// import {trailing} from '@milkdown/plugin-trailing'
+import {trailing} from '@milkdown/plugin-trailing'
 // import {usePluginViewFactory} from '@prosemirror-adapter/vue'
 // // KUN Visual Novel Custom tooltip
 // import {tooltipFactory} from '@milkdown/plugin-tooltip'
@@ -59,8 +59,6 @@ const props = defineProps({
 
 const initEditorContent = ref(props.initialValue);
 
-// const editorHight = computed(() => 300 + 'px')
-// const valueMarkdown = computed(() => value.value)
 // const tooltip = tooltipFactory('Text')
 // const pluginViewFactory = usePluginViewFactory()
 const container = ref(null)
@@ -129,9 +127,9 @@ useEditor((root) =>
             // .use(gfm)
             // .use(prism)
             .use(listener)
-    // .use(clipboard)
-    // .use(indent)
-    // .use(trailing)
+            // .use(clipboard)
+            // .use(indent)
+            .use(trailing)
     // .use(tooltip)
     // // Add custom plugin view, calculate markdown text size
     // .use(
