@@ -1,6 +1,8 @@
 <template>
   <div class="flex items-center justify-between border-b p-2 sticky top-0 z-10">
-    <div class="text-lg font-semibold">✗</div>
+    <div class="text-lg font-semibold">
+      <RouterLink :to="{name: 'Home'}" class="">✗</RouterLink>
+    </div>
     <div class="flex items-center space-x-2">
       <button class="">☆</button>
       <div class="relative">
@@ -16,7 +18,7 @@
 
 <script setup>
 import {ref} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
+import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {deleteNote} from '../lib/notebook.js';
 
 const showMenu = ref(false);
