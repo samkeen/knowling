@@ -42,6 +42,7 @@ import {upsertNote} from '../lib/notebook.js';
 import {info} from "tauri-plugin-log-api";
 
 let noteText = ref('');
+let originalNoteText = ref('');
 let noteLoaded = ref(false);
 
 const autosaveDelay = 1000; // Adjust the delay as needed (in milliseconds)
@@ -59,18 +60,23 @@ function handleNoteUpdate(event) {
 }
 
 async function handleSaveNote() {
-  const savedNoteId = await upsertNote(noteId.value, noteText.value);
-  if (!noteId.value && savedNoteId) {
-    noteId.value = savedNoteId;
+  if (noteText.value !== originalNoteText.value) {
+    const savedNoteId = await upsertNote(noteId.value, noteText.value);
+    if (!noteId.value && savedNoteId) {
+      noteId.value = savedNoteId;
+    }
+  } else {
+    info("Note content has not changed. Skipping save.");
   }
 }
 
 onMounted(async () => {
   if (noteId.value) {
-    info("The note id: ", noteId.value);
+    info(`The note id: ${noteId.value}`);
     try {
       const note = await invoke("get_note_by_id", {id: noteId.value});
       noteText.value = note.text;
+      originalNoteText.value = note.text;
       noteLoaded.value = true;
     } catch (error) {
       console.error("Failed getting note:", error);
