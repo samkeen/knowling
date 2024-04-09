@@ -53,12 +53,16 @@
         <span>System</span>
       </button>
     </div>
+    <h3 class="text-lg font-bold mt-4">Similarity score threshold</h3>
+    <div class="tooltip w-1/3" :data-tip="similarityScoreThreshold">
+      <input type="range" min=".05" max=".99" step="0.01" class="range w-full" v-model="similarityScoreThreshold">
+    </div>
   </div>
 
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, watch} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {info, error} from "tauri-plugin-log-api";
 import {open} from '@tauri-apps/api/dialog';
@@ -71,6 +75,7 @@ const isExporting = ref(false);
 const importResult = ref('');
 const importError = ref('');
 const isImporting = ref(false);
+
 
 async function exportNotes() {
   isExporting.value = true;
@@ -120,12 +125,19 @@ async function importNotes() {
 }
 
 const theme = ref('system');
+const similarityScoreThreshold = ref(0.2);
 
 function setTheme(selectedTheme) {
   theme.value = selectedTheme;
   localStorage.setItem("app-theme", selectedTheme);
   updateHtmlTheme();
 }
+
+// Store in localStorage whenever the value changes
+watch(similarityScoreThreshold, (newThreshold) => {
+  info(`Setting similarity score threshold to: ${newThreshold}`);
+  localStorage.setItem("similarityScoreThreshold", newThreshold);
+});
 
 function updateHtmlTheme() {
   if (theme.value === 'system') {
@@ -145,6 +157,12 @@ onMounted(() => {
     theme.value = storedTheme;
   }
   updateHtmlTheme();
+  const storedThreshold = localStorage.getItem("similarityScoreThreshold");
+  if (storedThreshold) {
+    const parsedThreshold = parseFloat(storedThreshold);
+    info(`Read similarity score threshold from storage: ${parsedThreshold}`);
+    similarityScoreThreshold.value = parsedThreshold;
+  }
 });
 </script>
 <style scoped>

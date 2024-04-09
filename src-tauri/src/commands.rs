@@ -83,11 +83,16 @@ pub async fn delete_note(notebook: State<'_, AppState>, id: &str) -> Result<(), 
 pub async fn get_note_similarities(
     notebook: State<'_, AppState>,
     id: &str,
+    threshold: f32,
 ) -> Result<Vec<(Note, f32)>, NotebookError> {
     let notebook = notebook.notebook.lock().await;
     let note = notebook.get_note_by_id(id).await?;
     match note {
-        Some(note) => notebook.get_note_similars(note, Some(3), Some(0.5)).await,
+        Some(note) => {
+            notebook
+                .get_note_similars(note, Some(3), Some(threshold))
+                .await
+        }
         None => Err(NotebookError::NoteNotFound(format!(
             "No note found with id: {}",
             id

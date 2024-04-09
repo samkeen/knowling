@@ -36,9 +36,9 @@ export async function upsertNote(noteId, noteText) {
     }
 }
 
-export async function getRelatedNotes(noteId) {
+export async function getRelatedNotes(noteId, similarityThreshold) {
     try {
-        const results = await invoke('get_note_similarities', {id: noteId});
+        const results = await invoke('get_note_similarities', {id: noteId, threshold: similarityThreshold});
         return results.map(([note, similarityScore]) => ({
             note,
             similarityScore,

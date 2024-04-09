@@ -3,7 +3,12 @@
     <h2 class="text-xl font-bold mb-4">Related</h2>
     <ul>
       <li v-for="result in relatedNotes" :key="result.note.id">
-        <RouterLink :to="{name: 'EditNote', params: {id:result.note.id}}">{{ noteTitle(result.note.text) }}</RouterLink>
+        <div class="tooltip" :data-tip="result.similarityScore">
+          <RouterLink :to="{name: 'EditNote', params: {id:result.note.id}}">{{
+              noteTitle(result.note.text)
+            }}
+          </RouterLink>
+        </div>
       </li>
     </ul>
   </div>
@@ -13,7 +18,7 @@
 import {RouterLink} from 'vue-router'
 import {ref, defineProps, onMounted} from 'vue';
 import {noteTitle, getRelatedNotes} from '../lib/notebook.js';
-import {info} from "tauri-plugin-log-api";
+import {info, debug} from "tauri-plugin-log-api";
 
 const props = defineProps({
   noteId: {
@@ -26,8 +31,14 @@ const props = defineProps({
 const relatedNotes = ref([]);
 
 async function fetchRelatedNotes(noteId) {
-  relatedNotes.value = await getRelatedNotes(noteId);
-  info('Related notes:', relatedNotes.value);
+  let storedThreshold = parseFloat(localStorage.getItem("similarityScoreThreshold"));
+  if (!storedThreshold) {
+    debug('No stored similarity score threshold found. Using default value: 0.30');
+    storedThreshold = 0.3;
+  }
+  info(`using similarity score threshold: ${storedThreshold}`);
+  relatedNotes.value = await getRelatedNotes(noteId, storedThreshold);
+  debug(`Related notes: ${relatedNotes.value}`);
 }
 
 onMounted(() => {
