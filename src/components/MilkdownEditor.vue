@@ -1,11 +1,18 @@
+<template>
+  <Milkdown
+      class="editor"
+      :class="isEditorFocus || editorContent ? 'active' : ''"
+  />
+</template>
+
 <script setup>
 /**
  * original inspiration: https://github.com/Yumamama00/vue3-milkdown-sample/tree/main
  */
 
-import {computed, ref} from 'vue'
+import {ref} from 'vue'
 // Milkdown core
-import {Editor, rootCtx, rootAttrsCtx, defaultValueCtx} from '@milkdown/core'
+import {defaultValueCtx, Editor, rootCtx} from '@milkdown/core'
 import {Milkdown, useEditor} from '@milkdown/vue'
 import {commonmark} from '@milkdown/preset-commonmark'
 import {nord} from "@milkdown/theme-nord";
@@ -25,10 +32,8 @@ import {trailing} from '@milkdown/plugin-trailing'
 // import Size from './plugins/Size.vue'
 // import {$prose} from '@milkdown/utils'
 // import {Plugin} from '@milkdown/prose/state'
-
 // KUN Visual Novel style
 // import '@/styles/editor/index.scss'
-
 // Syntax highlight
 // import c from 'refractor/lang/c'
 // import cpp from 'refractor/lang/cpp'
@@ -145,10 +150,3 @@ useEditor((root) =>
     // )
 )
 </script>
-
-<template>
-  <Milkdown
-      class="editor"
-      :class="isEditorFocus || editorContent ? 'active' : ''"
-  />
-</template>

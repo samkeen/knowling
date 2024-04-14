@@ -8,7 +8,15 @@ export default {
         "./node_modules/@milkdown/**/*.{vue,js,ts,jsx,tsx}",
     ],
     theme: {
-        extend: {},
+        extend: {
+            typography: (theme) => ({
+                DEFAULT: {
+                    css: {
+                        maxWidth: 'none',  // override here
+                    },
+                },
+            }),
+        },
     },
     plugins: [
         require('@tailwindcss/typography'),
