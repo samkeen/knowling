@@ -1,4 +1,4 @@
-# Nova Notes
+# Knowling
 
 ## Project setup
 

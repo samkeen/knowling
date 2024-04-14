@@ -2,7 +2,7 @@
   <header class="shadow">
     <div class="container px-4 py-4 flex items-center">
       <div class="flex-grow">
-        <h1 class="text-2xl font-bold">Knowling</h1>
+        <img src="/knowling-logo-v0.png" class="small-image">
       </div>
       <nav>
         <ul class="flex space-x-4">
@@ -42,3 +42,10 @@ function navigateToNewNote() {
 }
 
 </script>
+
+<style scoped>
+.small-image {
+  width: 70px; /* or any size you want */
+  height: auto; /* to maintain aspect ratio */
+}
+</style>

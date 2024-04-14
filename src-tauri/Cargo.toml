@@ -13,7 +13,7 @@ tauri-build = { version = "1", features = [] }
 [dependencies]
 log = "0.4.20"
 tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
-tauri = { version = "1", features = [ "path-all", "dialog-all", "shell-open"] }
+tauri = { version = "1", features = ["path-all", "dialog-all", "shell-open"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
@@ -27,6 +27,7 @@ anyhow = "1.0.79"
 rand = "0.8.5"
 chrono = "0.4.37"
 dirs = "5.0.1"
+llm-api-adapter = "0.1.1"
 
 
 [features]
