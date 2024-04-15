@@ -2,7 +2,7 @@
   <header class="shadow">
     <div class="container px-4 py-4 flex items-center">
       <div class="flex-grow">
-        <img src="/knowling-logo-v0.png" class="small-image">
+        <img src="/k-logo.svg" class="small-image icon">
       </div>
       <nav>
         <ul class="flex space-x-4">
