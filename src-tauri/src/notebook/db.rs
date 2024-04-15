@@ -1,16 +1,16 @@
-use crate::notebook::db::EmbedStoreError::Runtime;
-use arrow_array::types::Float32Type;
 use arrow_array::{
     ArrayRef, FixedSizeListArray, Float32Array, Int64Array, RecordBatch, RecordBatchIterator,
     StringArray,
 };
+use arrow_array::types::Float32Type;
 use arrow_schema::{ArrowError, DataType, Field, Schema};
 use chrono::Utc;
 use fastembed::{Embedding, TextEmbedding};
 use futures::TryStreamExt;
+use lancedb::{connect, Table};
 use lancedb::connection::Connection;
 use lancedb::index::Index;
-use lancedb::{connect, Table};
+use lancedb::query::{ExecutableQuery, QueryBase};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::Serialize;
@@ -19,6 +19,8 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::path::Path;
 use std::sync::Arc;
+
+use crate::notebook::db::EmbedStoreError::Runtime;
 
 const DB_NAME: &str = "lancedb_storage";
 const TABLE_NAME: &str = "documents";
@@ -197,7 +199,6 @@ impl EmbedStore {
         filter: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
-        let limit = limit.unwrap_or(25);
         let query = self.create_embeddings(&[search_text.to_string()])?;
         // flattening a 2D vector into a 1D vector. This is necessary because the search
         // function of the Table trait expects a 1D vector as input. However, the
@@ -207,7 +208,7 @@ impl EmbedStore {
             .into_iter()
             .flat_map(|embedding| embedding.to_vec())
             .collect();
-        self.execute_search(query, filter, Some(limit)).await
+        self.execute_search(query, filter, limit).await
     }
 
     async fn execute_search(
@@ -216,14 +217,19 @@ impl EmbedStore {
         filter: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
-        let limit = limit.unwrap_or(10);
-        let mut query_builder = self.table.search(&query).limit(limit);
-        // filter, see https://lancedb.github.io/lancedb/sql/
+        // let limit = limit.unwrap_or(25);
+        let mut query_builder = self
+            .table
+            .vector_search(query)
+            .map_err(EmbedStoreError::VectorDb)?;
         if let Some(filter_clause) = filter {
-            query_builder = query_builder.filter(filter_clause);
+            query_builder = query_builder.only_if(filter_clause);
+        }
+        if let Some(limit_clause) = limit {
+            query_builder = query_builder.limit(limit_clause);
         }
 
-        let stream = query_builder.execute_stream().await?;
+        let stream = query_builder.execute().await?;
         let record_batches = match stream.try_collect::<Vec<_>>().await {
             Ok(batches) => batches,
             Err(err) => {
@@ -239,19 +245,18 @@ impl EmbedStore {
 
     async fn execute_query(
         &self,
-        query: Option<Vec<f32>>,
         filter: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<Document>, EmbedStoreError> {
-        let limit = limit.unwrap_or(10);
-        let mut query_builder = match query {
-            None => self.table.query().limit(limit),
-            Some(search_values) => self.table.search(&search_values).limit(limit),
-        };
+        let mut query_builder = self.table.query();
         if let Some(filter_clause) = filter {
-            query_builder = query_builder.filter(filter_clause);
+            query_builder = query_builder.only_if(filter_clause);
         }
-        let stream = query_builder.execute_stream().await?;
+        if let Some(limit_clause) = limit {
+            query_builder = query_builder.limit(limit_clause);
+        }
+
+        let stream = query_builder.execute().await?;
 
         let record_batches = match stream.try_collect::<Vec<_>>().await {
             Ok(batches) => batches,
@@ -267,7 +272,7 @@ impl EmbedStore {
     }
     pub async fn get(&self, id: &str) -> Result<Option<Document>, EmbedStoreError> {
         let filter = format!("id = '{}'", id);
-        let mut result = self.execute_query(None, Some(&filter), None).await?;
+        let mut result = self.execute_query(Some(&filter), None).await?;
         assert!(
             result.len() <= 1,
             "The get by id method should only return one item at most"
@@ -277,7 +282,7 @@ impl EmbedStore {
 
     pub async fn get_all(&self) -> Result<(Vec<Document>, usize), EmbedStoreError> {
         let total_records = self.record_count().await?;
-        let documents = self.execute_query(None, None, Some(1000)).await?;
+        let documents = self.execute_query(None, None).await?;
         log::info!(
             "get_all returned {} records. Total rows in db: {}",
             documents.len(),
