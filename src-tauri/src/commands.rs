@@ -1,9 +1,14 @@
+use std::path::PathBuf;
+
+use serde_json::json;
+use tauri::{App, State};
+use tauri::api::path::download_dir;
+use tauri_plugin_store::{Store, StoreBuilder};
+
+use crate::AppState;
+use crate::llm::llm_request;
 use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
-use crate::AppState;
-use std::path::PathBuf;
-use tauri::api::path::download_dir;
-use tauri::State;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -22,6 +27,18 @@ pub async fn save_note(
         Err(e) => Err(format!("Error: {}", e)),
     }
 }
+
+#[tauri::command]
+pub async fn prompt_llm(app_handle: tauri::AppHandle, prompt: &str) -> Result<String, NotebookError> {
+    let mut store = StoreBuilder::new(app_handle, PathBuf::from("settings.json")).build();
+    let _ = store.load();
+    let default_value = json!("");
+    let api_key = store.get("anthropicApiKey").unwrap_or_else(|| &default_value).to_string();
+    let result = llm_request(prompt, &api_key).await;
+    log::info!("LLM response: {:?}", result);
+    Ok("RESULT".to_string())
+}
+
 
 #[tauri::command]
 pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, NotebookError> {
