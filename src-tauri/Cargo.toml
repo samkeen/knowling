@@ -27,7 +27,7 @@ anyhow = "1.0.79"
 rand = "0.8.5"
 chrono = "0.4.37"
 dirs = "5.0.1"
-llm-api-adapter = "0.1.1"
+llm-api-adapter = { git = "https://github.com/samkeen/llm-api-adapter", branch = "main" }
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 
 

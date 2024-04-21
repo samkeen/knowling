@@ -1,15 +1,15 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::io::Write;
 use std::sync::Arc;
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use log::LevelFilter;
+use tauri::Manager;
 use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
 
-use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, save_note};
+use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, prompt_about_note, save_note};
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
@@ -26,7 +26,7 @@ pub struct AppState {
     pub notebook: Arc<Mutex<Notebook>>,
 }
 
-// adapt log tagets based on prod/non-prod
+// adapt log targets based on prod/non-prod
 #[cfg(debug_assertions)]
 const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::Webview];
 #[cfg(not(debug_assertions))]
@@ -58,6 +58,14 @@ fn main() {
         });
 
     tauri::Builder::default()
+        .setup(|app| {
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            {
+                let window = app.get_window("main").unwrap();
+                window.open_devtools();
+            }
+            Ok(())
+        })
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets(LOG_TARGETS)
@@ -76,6 +84,7 @@ fn main() {
             get_note_by_id,
             get_note_similarities,
             delete_note,
+            prompt_about_note,
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

@@ -5,11 +5,53 @@
     </div>
     <div class="flex items-center space-x-2">
       <button class="">☆</button>
+      <button @click="openQuestionDialog" class="">?</button>
       <div class="relative">
         <button @click="toggleMenu" class="">…</button>
         <div v-if="showMenu" class="absolute right-0 mt-2 py-2 w-48 rounded-md shadow-xl z-20">
           <a @click="handleDeleteNote" href="#"
              class="block px-4 py-2 text-sm">Delete</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="showQuestionDialog" class="fixed inset-0 flex items-center justify-center z-50">
+    <div class="rounded-lg p-6 w-96">
+      <textarea v-model="question" class="w-full h-32 p-2 border rounded" placeholder="Enter your question"></textarea>
+      <div class="mt-4 flex justify-end">
+        <button @click="submitQuestion" class="btn px-4 py-2 rounded">Submit</button>
+        <button @click="closeQuestionDialog" class="btn ml-2 px-4 py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div v-if="showResponseDialog" class="fixed inset-0 flex items-center justify-center z-50"
+       @click.self="closeResponseDialog">
+    <div class="rounded-lg p-6 w-2/3 max-h-screen shadow-xl bg-base-100 border rounded">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Response</h2>
+        <div class="flex space-x-2">
+          <button @click="copyToClipboard" class="btn btn-sm">
+            <span class="sr-only">Copy to Clipboard</span>
+            <svg :class="['h-6 w-6 transform duration-300', { 'scale-75': copyClicked }]"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+            </svg>
+          </button>
+          <button @click="closeResponseDialog" class="btn btn-square btn-sm">
+            <span class="sr-only">Close</span>
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="mb-4 overflow-y-auto max-h-96">
+        <div class="card">
+          <div class="card-body">
+            <p>{{ response }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -20,8 +62,16 @@
 import {ref} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {deleteNote} from '../lib/notebook.js';
+import {invoke} from "@tauri-apps/api/tauri";
+import {info} from "tauri-plugin-log-api";
 
 const showMenu = ref(false);
+const showQuestionDialog = ref(false);
+const question = ref('');
+const showResponseDialog = ref(false);
+const response = ref('');
+const copyClicked = ref(false);
+
 const route = useRoute();
 const router = useRouter();
 let noteId = ref(route.params.id || null);
@@ -32,5 +82,50 @@ function toggleMenu() {
 
 function handleDeleteNote() {
   deleteNote(noteId.value, router);
+}
+
+function openQuestionDialog() {
+  showQuestionDialog.value = true;
+}
+
+function closeQuestionDialog() {
+  showQuestionDialog.value = false;
+  question.value = '';
+}
+
+function submitQuestion() {
+  processQuestion(question.value);
+  closeQuestionDialog();
+}
+
+async function processQuestion(questionText) {
+  try {
+    let responseText = await invoke("prompt_about_note", {prompt: questionText, noteId: noteId.value});
+    info(`LLM response: ${responseText}`);
+    response.value = responseText;
+    showResponseDialog.value = true;
+  } catch (error) {
+    console.error("Failed prompting LLM:", error);
+  }
+  console.log('Processing question:', questionText);
+}
+
+function closeResponseDialog() {
+  showResponseDialog.value = false;
+  response.value = '';
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(response.value)
+      .then(() => {
+        console.log('Response copied to clipboard');
+        copyClicked.value = true;
+        setTimeout(() => {
+          copyClicked.value = false;
+        }, 200);
+      })
+      .catch((error) => {
+        console.error('Failed to copy response:', error);
+      });
 }
 </script>
