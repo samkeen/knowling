@@ -5,3 +5,16 @@
 html[data-theme="dark"] img.icon {
     filter: invert(1);
 }
+
+.milkdown .editor p {
+    margin: 0;
+}
+
+.milkdown .editor li {
+    margin: 0;
+}
+
+.milkdown .editor hr {
+    margin: 2em;
+}
+

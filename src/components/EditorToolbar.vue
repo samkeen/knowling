@@ -19,14 +19,24 @@
     <div class="rounded-lg p-6 w-96">
       <textarea v-model="question" class="w-full h-32 p-2 border rounded" placeholder="Enter your question"></textarea>
       <div class="mt-4 flex justify-end">
-        <button @click="submitQuestion" class="btn px-4 py-2 rounded">Submit</button>
+        <button @click="submitQuestion" class="btn px-4 py-2 rounded" :disabled="isLoading">
+          <div v-if="isLoading" class="inline-block">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                 viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <span v-else>Submit</span>
+        </button>
         <button @click="closeQuestionDialog" class="btn ml-2 px-4 py-2 rounded">Cancel</button>
       </div>
     </div>
   </div>
   <div v-if="showResponseDialog" class="fixed inset-0 flex items-center justify-center z-50"
        @click.self="closeResponseDialog">
-    <div class="rounded-lg p-6 w-2/3 max-h-screen shadow-xl bg-base-100 border rounded">
+    <div class="p-6 w-2/3 max-h-screen shadow-xl bg-base-100 border rounded">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold">Response</h2>
         <div class="flex space-x-2">
@@ -50,7 +60,8 @@
       <div class="mb-4 overflow-y-auto max-h-96">
         <div class="card">
           <div class="card-body">
-            <p>{{ response }}</p>
+            <MilkdownEditorWrapper :initialValue="response" :readonly="true"/>
+            <!--            <p>{{ response }}</p>-->
           </div>
         </div>
       </div>
@@ -64,6 +75,7 @@ import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {deleteNote} from '../lib/notebook.js';
 import {invoke} from "@tauri-apps/api/tauri";
 import {info} from "tauri-plugin-log-api";
+import MilkdownEditorWrapper from "./MilkdownEditorWrapper.vue";
 
 const showMenu = ref(false);
 const showQuestionDialog = ref(false);
@@ -71,6 +83,7 @@ const question = ref('');
 const showResponseDialog = ref(false);
 const response = ref('');
 const copyClicked = ref(false);
+const isLoading = ref(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -93,9 +106,11 @@ function closeQuestionDialog() {
   question.value = '';
 }
 
-function submitQuestion() {
-  processQuestion(question.value);
+async function submitQuestion() {
+  isLoading.value = true;
+  await processQuestion(question.value);
   closeQuestionDialog();
+  isLoading.value = false;
 }
 
 async function processQuestion(questionText) {

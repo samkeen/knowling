@@ -4,7 +4,7 @@
       <EditorToolbar/>
       <div class="flex-1 overflow-y-auto p-4">
         <template v-if="noteLoaded">
-          <MilkdownEditorWrapper :initialValue="noteText" @update="handleNoteUpdate"/>
+          <MilkdownEditorWrapper :initialValue="noteText" :readonly="false" @update="handleNoteUpdate"/>
         </template>
         <template v-else>
           <div class="text-center">Loading note...</div>

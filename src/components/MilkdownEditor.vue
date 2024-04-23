@@ -12,7 +12,7 @@
 
 import {ref} from 'vue'
 // Milkdown core
-import {defaultValueCtx, Editor, rootCtx} from '@milkdown/core'
+import {defaultValueCtx, Editor, editorViewOptionsCtx, rootCtx} from '@milkdown/core'
 import {Milkdown, useEditor} from '@milkdown/vue'
 import {commonmark} from '@milkdown/preset-commonmark'
 import {nord} from "@milkdown/theme-nord";
@@ -21,7 +21,7 @@ import {nord} from "@milkdown/theme-nord";
 // import {history} from '@milkdown/plugin-history'
 // import {prism, prismConfig} from '@milkdown/plugin-prism'
 import {listener, listenerCtx} from '@milkdown/plugin-listener'
-// import {clipboard} from '@milkdown/plugin-clipboard'
+import {clipboard} from '@milkdown/plugin-clipboard';
 // import {indent} from '@milkdown/plugin-indent'
 import {trailing} from '@milkdown/plugin-trailing'
 // import {usePluginViewFactory} from '@prosemirror-adapter/vue'
@@ -59,9 +59,12 @@ import {info} from "tauri-plugin-log-api";
 // const value = ref('')
 const emit = defineEmits(['update']);
 const props = defineProps({
-  initialValue: String
+  initialValue: String,
+  readonly: Boolean,
 });
-
+const readonly = ref(props.readonly);
+console.log("READ_ONLY: ", readonly.value)
+const editable = () => !readonly.value;
 const initEditorContent = ref(props.initialValue);
 
 // const tooltip = tooltipFactory('Text')
@@ -74,6 +77,10 @@ useEditor((root) =>
         Editor.make()
             .config((ctx) => {
               ctx.set(rootCtx, root)
+              ctx.update(editorViewOptionsCtx, (prev) => ({
+                ...prev,
+                editable,
+              }));
               // ctx.set(rootAttrsCtx, {
               //   roles: 'kun-galgame-milkdown-editor',
               //   'aria-label': 'kun-galgame-milkdown-editor',
@@ -135,6 +142,7 @@ useEditor((root) =>
             // .use(clipboard)
             // .use(indent)
             .use(trailing)
+            .use(clipboard)
     // .use(tooltip)
     // // Add custom plugin view, calculate markdown text size
     // .use(
