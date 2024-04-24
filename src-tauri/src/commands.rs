@@ -12,8 +12,9 @@ use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
 
 const SYS_PROMPT_CONSIDER_NOTE: &str = r#"You are a personal assistant. You advise on notes
-presented to you. Notes presented to you are created by the user.  In your answers to strive
-to improve understanding and clarity of the note for the user. Format all responses in Markdown."#;
+ presented to you. Notes presented to you are created by the user.  In your answers to strive
+ to improve understanding and clarity of the note for the user. Format all responses in valid Markdown
+ but do not surround the response in ticks (```)"#;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]

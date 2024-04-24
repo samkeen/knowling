@@ -60,8 +60,12 @@
       <div class="mb-4 overflow-y-auto max-h-96">
         <div class="card">
           <div class="card-body">
-            <MilkdownEditorWrapper :initialValue="response" :readonly="true"/>
-            <!--            <p>{{ response }}</p>-->
+            <!--            <MilkdownProvider>-->
+            <!--              <ProsemirrorAdapterProvider>-->
+            <!--                <MilkdownEditor :initialValue="response.value" :readonly="true"/>-->
+            <!--              </ProsemirrorAdapterProvider>-->
+            <!--            </MilkdownProvider>-->
+            <p>{{ response }}</p>
           </div>
         </div>
       </div>
@@ -74,8 +78,7 @@ import {ref} from 'vue';
 import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {deleteNote} from '../lib/notebook.js';
 import {invoke} from "@tauri-apps/api/tauri";
-import {info} from "tauri-plugin-log-api";
-import MilkdownEditorWrapper from "./MilkdownEditorWrapper.vue";
+import {error, info} from "tauri-plugin-log-api";
 
 const showMenu = ref(false);
 const showQuestionDialog = ref(false);
@@ -102,6 +105,7 @@ function openQuestionDialog() {
 }
 
 function closeQuestionDialog() {
+  info(`Closing question dialog...`);
   showQuestionDialog.value = false;
   question.value = '';
 }
@@ -109,20 +113,27 @@ function closeQuestionDialog() {
 async function submitQuestion() {
   isLoading.value = true;
   await processQuestion(question.value);
+  info(`Completed: processQuestion`);
   closeQuestionDialog();
+  info(`Setting isLoading to: false`);
   isLoading.value = false;
 }
 
 async function processQuestion(questionText) {
   try {
+    info("Sending question to LLM...");
     let responseText = await invoke("prompt_about_note", {prompt: questionText, noteId: noteId.value});
+    if (responseText === null || responseText === undefined) {
+      throw new Error('Response from invoke is null or undefined');
+    }
     info(`LLM response: ${responseText}`);
     response.value = responseText;
+    info(`Setting showResponseDialog to: true`);
     showResponseDialog.value = true;
-  } catch (error) {
-    console.error("Failed prompting LLM:", error);
+  } catch (err) {
+    error(`Failed prompting LLM: ${err}`);
   }
-  console.log('Processing question:', questionText);
+  info(`Processing question: ${questionText}`);
 }
 
 function closeResponseDialog() {
@@ -139,8 +150,8 @@ function copyToClipboard() {
           copyClicked.value = false;
         }, 200);
       })
-      .catch((error) => {
-        console.error('Failed to copy response:', error);
+      .catch((err) => {
+        error(`Failed to copy response: ${err}`);
       });
 }
 </script>
