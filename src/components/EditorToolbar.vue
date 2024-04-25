@@ -17,7 +17,8 @@
   </div>
   <div v-if="showQuestionDialog" class="fixed inset-0 flex items-center justify-center z-50">
     <div class="rounded-lg p-6 w-96">
-      <textarea v-model="question" class="w-full h-32 p-2 border rounded" placeholder="Enter your question"></textarea>
+      <textarea v-model="question" class="w-full h-32 p-2 border rounded"
+                placeholder="Enter your question about this note"></textarea>
       <div class="mt-4 flex justify-end">
         <button @click="submitQuestion" class="btn px-4 py-2 rounded" :disabled="isLoading">
           <div v-if="isLoading" class="inline-block">
@@ -60,12 +61,11 @@
       <div class="mb-4 overflow-y-auto max-h-96">
         <div class="card">
           <div class="card-body">
-            <!--            <MilkdownProvider>-->
-            <!--              <ProsemirrorAdapterProvider>-->
-            <!--                <MilkdownEditor :initialValue="response.value" :readonly="true"/>-->
-            <!--              </ProsemirrorAdapterProvider>-->
-            <!--            </MilkdownProvider>-->
-            <p>{{ response }}</p>
+            <MilkdownProvider>
+              <ProsemirrorAdapterProvider>
+                <MilkdownEditor :initialValue="response" :readonly="true"/>
+              </ProsemirrorAdapterProvider>
+            </MilkdownProvider>
           </div>
         </div>
       </div>
@@ -79,6 +79,10 @@ import {RouterLink, useRoute, useRouter} from 'vue-router';
 import {deleteNote} from '../lib/notebook.js';
 import {invoke} from "@tauri-apps/api/tauri";
 import {error, info} from "tauri-plugin-log-api";
+import {MilkdownProvider} from "@milkdown/vue";
+import {ProsemirrorAdapterProvider} from '@prosemirror-adapter/vue';
+import MilkdownEditor from "../components/MilkdownEditor.vue";
+
 
 const showMenu = ref(false);
 const showQuestionDialog = ref(false);

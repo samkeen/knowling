@@ -18,6 +18,7 @@ import {info} from "tauri-plugin-log-api";
 import {listener, listenerCtx} from '@milkdown/plugin-listener'
 import {trailing} from "@milkdown/plugin-trailing";
 import {clipboard} from "@milkdown/plugin-clipboard";
+// From https://stackblitz.com/github/Milkdown/examples/tree/main/vue-custom-component
 // import Size from './Size.vue';
 // import HeadingAnchor from './HeadingAnchor.vue';
 // import Blockquote from './Blockquote.vue';
@@ -79,6 +80,7 @@ useEditor((root) => {
       .use(trailing)
       .use(clipboard)
       .use(tooltip)
+  // FROM https://stackblitz.com/github/Milkdown/examples/tree/main/vue-custom-component
   // // Add custom node view
   // Pull these from Local::Milkdown Examples
   // .use($view(blockquoteSchema.node, () => nodeViewFactory({
