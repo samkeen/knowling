@@ -57,16 +57,24 @@
     <div class="tooltip w-1/3" :data-tip="similarityScoreThreshold">
       <input type="range" min=".05" max=".99" step="0.01" class="range w-full" v-model="similarityScoreThreshold">
     </div>
+    <h3 class="text-lg font-bold mt-4">LLM</h3>
+    <label for="anthropic-api-key" class="label">Anthropic API Key</label>
+    <input v-model="anthropicApiKey" id="anthropic-api-key" type="password" placeholder="Type here"
+           class="input input-bordered w-full max-w-xs">
+    <button @click="persistAnthropicKey()" class="btn btn-outline ml-4 mt-4">Save</button>
   </div>
 
 </template>
 
 <script setup>
-import {ref, onMounted, watch} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
-import {info, error} from "tauri-plugin-log-api";
+import {error, info} from "tauri-plugin-log-api";
 import {open} from '@tauri-apps/api/dialog';
-import {downloadDir} from '@tauri-apps/api/path';
+import {appDataDir, downloadDir} from '@tauri-apps/api/path';
+import {Store} from "tauri-plugin-store-api";
+
+const store = new Store("settings.json");
 
 const exportResult = ref('');
 const exportError = ref('');
@@ -76,6 +84,19 @@ const importResult = ref('');
 const importError = ref('');
 const isImporting = ref(false);
 
+const anthropicApiKey = ref('');
+
+const theme = ref('system');
+const similarityScoreThreshold = ref(0.2);
+
+
+async function persistAnthropicKey() {
+  const appDataDirPath = await appDataDir();
+  info(`App data directory: ${appDataDirPath}`);
+  info(`Persisting Anthropic API Key: ${anthropicApiKey.value.substring(0, 4)}...`);
+  await store.set("anthropicApiKey", anthropicApiKey.value);
+  await store.save();
+}
 
 async function exportNotes() {
   isExporting.value = true;
@@ -124,8 +145,6 @@ async function importNotes() {
   }
 }
 
-const theme = ref('system');
-const similarityScoreThreshold = ref(0.2);
 
 function setTheme(selectedTheme) {
   theme.value = selectedTheme;

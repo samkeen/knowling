@@ -1,27 +1,32 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod commands;
-mod notebook;
-mod utils;
+use std::sync::Arc;
+
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use log::LevelFilter;
+use tauri::Manager;
+use tauri_plugin_log::LogTarget;
+use tokio::sync::Mutex;
+
+use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, prompt_about_note, save_note};
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
 use crate::utils::{get_user_app_dir, set_panic_hook};
-use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, save_note};
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use log::LevelFilter;
-use std::io::Write;
-use std::sync::Arc;
-use tauri_plugin_log::LogTarget;
-use tokio::sync::Mutex;
+
+mod commands;
+mod notebook;
+mod utils;
+mod llm;
 
 #[derive(Clone)]
 pub struct AppState {
     // See https://github.com/tauri-apps/tauri/discussions/1336#discussioncomment-1936523
     pub notebook: Arc<Mutex<Notebook>>,
 }
-// adapt log tagets based on prod/non-prod
+
+// adapt log targets based on prod/non-prod
 #[cfg(debug_assertions)]
 const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::Webview];
 #[cfg(not(debug_assertions))]
@@ -39,7 +44,7 @@ fn main() {
         cache_dir: app_dir.join("llm-cache"),
         ..Default::default()
     })
-    .unwrap();
+        .unwrap();
     // block until we get the Notebook
     let app_state = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -53,11 +58,22 @@ fn main() {
         });
 
     tauri::Builder::default()
+        .setup(|app| {
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            {
+                let window = app.get_window("main").unwrap();
+                window.open_devtools();
+            }
+            Ok(())
+        })
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets(LOG_TARGETS)
                 .level(LevelFilter::Info)
                 .build(),
+        )
+        .plugin(
+            tauri_plugin_store::Builder::default().build()
         )
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
@@ -68,6 +84,7 @@ fn main() {
             get_note_by_id,
             get_note_similarities,
             delete_note,
+            prompt_about_note,
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

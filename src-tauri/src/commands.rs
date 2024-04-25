@@ -1,9 +1,20 @@
-use crate::notebook::note::Note;
-use crate::notebook::NotebookError;
-use crate::AppState;
 use std::path::PathBuf;
+
+use log::info;
+use serde_json::json;
 use tauri::api::path::download_dir;
 use tauri::State;
+use tauri_plugin_store::StoreBuilder;
+
+use crate::AppState;
+use crate::llm::llm_request;
+use crate::notebook::note::Note;
+use crate::notebook::NotebookError;
+
+const SYS_PROMPT_CONSIDER_NOTE: &str = r#"You are a personal assistant. You advise on notes
+ presented to you. Notes presented to you are created by the user.  In your answers to strive
+ to improve understanding and clarity of the note for the user. Format all responses in valid Markdown
+ but do not surround the response in ticks (```)"#;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -22,6 +33,50 @@ pub async fn save_note(
         Err(e) => Err(format!("Error: {}", e)),
     }
 }
+
+#[tauri::command]
+pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri::AppHandle,
+                               prompt: &str, note_id: &str) -> Result<String, String> {
+    info!("running command prompt_about_note");
+    let notebook = notebook.notebook.lock().await;
+    match notebook.get_note_by_id(note_id).await {
+        Ok(note) => {
+            let mut store = StoreBuilder::new(app_handle, PathBuf::from("settings.json")).build();
+            let _ = store.load();
+            let default_value = json!("");
+            let api_key = match store.get("anthropicApiKey")
+                .unwrap_or(&default_value)
+                .as_str()
+                .map(|key| key.to_string()) {
+                Some(key) => key,
+                None => return Err("Unable to retrieve LLM API Key".into()),
+            };
+            let note_content = match note
+            {
+                None => { "".to_string() }
+                Some(note) => { note.text }
+            };
+            if api_key.is_empty() { return Err("Unable to retrieve LLM API Key".to_string()); }
+            // combine the prompt and the note content
+            let result = llm_request(
+                &format!("{}\n<note-content>{}\n</note-content>", prompt, note_content),
+                &api_key,
+                Some(SYS_PROMPT_CONSIDER_NOTE)).await;
+            match result {
+                Ok(result) => {
+                    Ok(result.first_message())
+                }
+                Err(err) => {
+                    Err(format!("Error: {}", err))
+                }
+            }
+        }
+        Err(err) => {
+            Err(format!("Note with id: {note_id} not found. ({err})").to_string())
+        }
+    }
+}
+
 
 #[tauri::command]
 pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, NotebookError> {

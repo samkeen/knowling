@@ -4,7 +4,13 @@
       <EditorToolbar/>
       <div class="flex-1 overflow-y-auto p-4">
         <template v-if="noteLoaded">
-          <MilkdownEditorWrapper :initialValue="noteText" @update="handleNoteUpdate"/>
+          <div class="root">
+            <MilkdownProvider>
+              <ProsemirrorAdapterProvider>
+                <MilkdownEditor :initialValue="noteText" :readonly="false" @update="handleNoteUpdate"/>
+              </ProsemirrorAdapterProvider>
+            </MilkdownProvider>
+          </div>
         </template>
         <template v-else>
           <div class="text-center">Loading note...</div>
@@ -14,6 +20,19 @@
     <Sidebar :note-id="noteId"/>
   </div>
 </template>
+<!--<script setup>-->
+<!--import Milkdown from './components/MilkdownEditor.vue'-->
+<!--import {MilkdownProvider} from '@milkdown/vue';-->
+<!--import {ProsemirrorAdapterProvider} from '@prosemirror-adapter/vue';-->
+<!--</script>-->
+
+<!--<template>-->
+<!--  <MilkdownProvider>-->
+<!--    <ProsemirrorAdapterProvider>-->
+<!--      <Milkdown/>-->
+<!--    </ProsemirrorAdapterProvider>-->
+<!--  </MilkdownProvider>-->
+<!--</template>-->
 
 <script setup>
 /**
@@ -37,9 +56,11 @@ import {useRoute} from 'vue-router';
 import {invoke} from "@tauri-apps/api/tauri";
 import {onMounted, ref} from "vue";
 import {debounce} from 'lodash-es';
-import MilkdownEditorWrapper from "../components/MilkdownEditorWrapper.vue";
 import {upsertNote} from '../lib/notebook.js';
 import {info} from "tauri-plugin-log-api";
+import {MilkdownProvider} from "@milkdown/vue";
+import MilkdownEditor from "../components/MilkdownEditor.vue";
+import {ProsemirrorAdapterProvider} from '@prosemirror-adapter/vue';
 
 let noteText = ref('');
 let originalNoteText = ref('');
