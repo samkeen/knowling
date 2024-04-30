@@ -1,6 +1,6 @@
-use llm_api_adapter::client::AnthropicClient;
-use llm_api_adapter::error::ApiError;
-use llm_api_adapter::models::{Message, ResponseMessage};
+use babel_bridge::client::AnthropicClient;
+use babel_bridge::error::ApiError;
+use babel_bridge::models::{Message, ResponseMessage};
 
 const DEFAULT_MODEL: &str = "claude-3-haiku-20240307";
 const DEFAULT_MAX_TOKENS: u32 = 1000;

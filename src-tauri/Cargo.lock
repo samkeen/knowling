@@ -741,6 +741,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "babel-bridge"
+version = "0.2.1"
+source = "git+https://github.com/samkeen/babel-bridge?branch=main#a3886218fa8ef12f2037ac6902e6b7772739d5ef"
+dependencies = [
+ "log",
+ "reqwest 0.12.3",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3039,12 +3051,12 @@ dependencies = [
  "anyhow",
  "arrow-array",
  "arrow-schema",
+ "babel-bridge",
  "chrono",
  "dirs",
  "fastembed",
  "futures",
  "lancedb",
- "llm-api-adapter",
  "log",
  "rand 0.8.5",
  "serde",
@@ -3579,18 +3591,6 @@ name = "linux-raw-sys"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
-
-[[package]]
-name = "llm-api-adapter"
-version = "0.1.3"
-source = "git+https://github.com/samkeen/llm-api-adapter?branch=main#5bd6a465bce94e3c4674368a93b2ae3bde772b78"
-dependencies = [
- "log",
- "reqwest 0.12.3",
- "serde",
- "serde_json",
- "thiserror",
-]
 
 [[package]]
 name = "lock_api"
