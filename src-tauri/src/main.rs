@@ -36,6 +36,7 @@ const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::LogDir];
 
 fn main() {
     let app_dir = get_user_app_dir();
+    // log here in the event of a panic
     set_panic_hook(&app_dir);
 
     let text_embedding = TextEmbedding::try_new(InitOptions {

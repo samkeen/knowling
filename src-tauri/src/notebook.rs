@@ -1,11 +1,14 @@
-use crate::notebook::db::{EmbedStore, EmbedStoreError};
-use crate::notebook::note::Note;
+use std::{fmt, fs};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
 use chrono::Utc;
 use fastembed::TextEmbedding;
 use serde::Serialize;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::{fmt, fs};
+use thiserror::Error;
+
+use crate::notebook::db::{EmbedStore, EmbedStoreError};
+use crate::notebook::note::Note;
 
 mod db;
 pub mod note;
@@ -23,8 +26,7 @@ impl Notebook {
         data_store_path: &Path,
     ) -> Result<Self, NotebookError> {
         let embed_store = EmbedStore::new(text_embedding, data_store_path)
-            .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+            .await?;
         Ok(Notebook { embed_store })
     }
 
@@ -35,33 +37,20 @@ impl Notebook {
     ) -> Result<Note, NotebookError> {
         match id {
             Some(id) => {
-                let existing_note = self
-                    .embed_store
-                    .get(id)
-                    .await
-                    .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                let existing_note = self.embed_store.get(id).await?;
                 match existing_note {
                     Some(mut note) => {
                         note.text = content.to_string();
-                        self.embed_store
-                            .update(vec![note.to_owned()])
-                            .await
-                            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                        self.embed_store.update(vec![note.to_owned()]).await?;
                         Ok(note.clone())
                     }
-                    None => Err(NotebookError::PersistenceError(format!(
-                        "Note with id {} not found",
-                        id
-                    ))),
+                    None => Err(NotebookError::NoteNotFound(id.to_string())),
                 }
             }
             None => {
                 let note = Note::new(content);
                 log::info!("Adding note[{}] to database", note.get_id());
-                self.embed_store
-                    .add(vec![note.clone()])
-                    .await
-                    .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+                self.embed_store.add(vec![note.clone()]).await?;
                 log::info!("Note added to database");
                 Ok(note)
             }
@@ -72,8 +61,7 @@ impl Notebook {
         let (existing_notes, _total_records) = self
             .embed_store
             .get_all()
-            .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+            .await?;
         Ok(existing_notes)
     }
 
@@ -81,15 +69,12 @@ impl Notebook {
         self.embed_store
             .get(id)
             .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))
+            .map_err(|e| NotebookError::PersistenceError(e))
     }
 
     pub async fn delete_note(&mut self, id: &str) -> Result<(), NotebookError> {
         log::info!("Deleting note[{}]", id);
-        self.embed_store
-            .delete(&vec![id])
-            .await
-            .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
+        self.embed_store.delete(&vec![id]).await?;
         Ok(())
     }
 
@@ -180,7 +165,7 @@ impl Notebook {
         let mut imported_notes = Vec::new();
 
         for entry in
-            fs::read_dir(&import_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?
+        fs::read_dir(&import_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?
         {
             let entry = entry.map_err(|e| NotebookError::FileAccess(e.to_string()))?;
             let path = entry.path();
@@ -195,8 +180,7 @@ impl Notebook {
 
         self.embed_store
             .add(imported_notes.clone())
-            .await
-            .map_err(|e| NotebookError::PersistenceError(e.to_string()))?;
+            .await?;
 
         Ok(imported_notes.len())
     }
@@ -259,33 +243,23 @@ impl Notebook {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Error, Debug, Serialize)]
 pub enum NotebookError {
-    PersistenceError(String),
+    #[error("Persistence error: {0}")]
+    PersistenceError(#[from] EmbedStoreError),
+
+    #[error("File access error: {0}")]
     FileAccess(String),
+
+    #[error("Embedding error: {0}")]
     EmbeddingError(String),
-    TableCreationError(String),
+
+    #[error("Note not found: {0}")]
     NoteNotFound(String),
 }
 
-impl fmt::Display for NotebookError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            NotebookError::PersistenceError(e) => write!(f, "Persistence error: {}", e),
-            NotebookError::FileAccess(e) => write!(f, "FileAccess error: {}", e),
-            NotebookError::EmbeddingError(e) => write!(f, "Embedding error: {}", e),
-            NotebookError::TableCreationError(e) => write!(f, "Table creation error: {}", e),
-            NotebookError::NoteNotFound(e) => write!(f, "Table creation error: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for NotebookError {}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // #[test]
     // fn test_notebook_new() {
     //     // todo!("I think i should use dependency injection for the embedding model")
