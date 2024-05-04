@@ -1,33 +1,45 @@
 use std::{fmt, fs};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use chrono::Utc;
 use fastembed::TextEmbedding;
+use log::info;
+use rusqlite::Connection;
 use serde::Serialize;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 use crate::notebook::db::{EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
+use crate::notebook::notebook_repository::{NotebookRepository, NotebookRepositoryError};
 
 mod db;
 pub mod note;
+mod notebook_repository;
 
 const SIMILARS_DEFAULT_LIMIT: usize = 3;
 const SIMILARS_DEFAULT_THRESHOLD: f32 = 0.01;
 
 pub struct Notebook {
     embed_store: EmbedStore,
+    models_store: NotebookRepository,
 }
 
 impl Notebook {
     pub async fn new(
         text_embedding: TextEmbedding,
-        data_store_path: &Path,
+        app_dir: &Path,
     ) -> Result<Self, NotebookError> {
-        let embed_store = EmbedStore::new(text_embedding, data_store_path)
+        let embed_store = EmbedStore::new(text_embedding, app_dir)
             .await?;
-        Ok(Notebook { embed_store })
+        let db_path = app_dir.join("db.sqlite");
+        let conn = Arc::new(Mutex::new(Connection::open(&db_path)?));
+        let nb_repository = NotebookRepository::new(conn);
+        nb_repository.init_db().await.expect("Unable it initialize models db");
+        info!("Connection to models db established: {:?}", db_path);
+        Ok(Notebook { embed_store, models_store: nb_repository })
     }
 
     pub async fn upsert_note(
@@ -41,6 +53,9 @@ impl Notebook {
                 match existing_note {
                     Some(mut note) => {
                         note.text = content.to_string();
+                        info!("updating note {} in models db", note.id);
+                        self.models_store.update_note(&note).await?;
+                        info!("updating note {} in embeddings db", note.id);
                         self.embed_store.update(vec![note.to_owned()]).await?;
                         Ok(note.clone())
                     }
@@ -49,9 +64,11 @@ impl Notebook {
             }
             None => {
                 let note = Note::new(content);
-                log::info!("Adding note[{}] to database", note.get_id());
+                info!("Adding new note[{}] to models database", note.get_id());
+                self.models_store.add_note(&note).await?;
+                info!("Adding new note[{}] to embeddings database", note.get_id());
                 self.embed_store.add(vec![note.clone()]).await?;
-                log::info!("Note added to database");
+                info!("Note added to database");
                 Ok(note)
             }
         }
@@ -69,11 +86,13 @@ impl Notebook {
         self.embed_store
             .get(id)
             .await
-            .map_err(|e| NotebookError::PersistenceError(e))
+            .map_err(|e| NotebookError::EmbeddingPersistence(e))
     }
 
     pub async fn delete_note(&mut self, id: &str) -> Result<(), NotebookError> {
-        log::info!("Deleting note[{}]", id);
+        info!("Deleting note[{}] from models db", id);
+        self.models_store.delete_note(id).await?;
+        info!("Deleting note[{}] from embeddings db", id);
         self.embed_store.delete(&vec![id]).await?;
         Ok(())
     }
@@ -103,10 +122,10 @@ impl Notebook {
             .filter(|i| i.1 > threshold)
             .collect();
         if results_outside_threshold.is_empty() {
-            log::info!("All results met the threshold of {}", threshold);
+            info!("All results met the threshold of {}", threshold);
             return Ok(result);
         }
-        log::info!(
+        info!(
             "{} result(s) did not meet the threshold of {}: {:?}",
             results_outside_threshold.len(),
             threshold,
@@ -246,7 +265,13 @@ impl Notebook {
 #[derive(Error, Debug, Serialize)]
 pub enum NotebookError {
     #[error("Persistence error: {0}")]
-    PersistenceError(#[from] EmbedStoreError),
+    EmbeddingPersistence(#[from] EmbedStoreError),
+
+    #[error("Persistence error: {0}")]
+    ModelsDbPersistence(#[from] NotebookRepositoryError),
+
+    #[error("Models db error: {0}")]
+    ModelPersistence(String),
 
     #[error("File access error: {0}")]
     FileAccess(String),
@@ -256,6 +281,13 @@ pub enum NotebookError {
 
     #[error("Note not found: {0}")]
     NoteNotFound(String),
+}
+
+// rusqlite::Error does not implement Serialize, so we adapt it to a String
+impl From<rusqlite::Error> for NotebookError {
+    fn from(err: rusqlite::Error) -> NotebookError {
+        NotebookError::ModelPersistence(err.to_string())
+    }
 }
 
 #[cfg(test)]

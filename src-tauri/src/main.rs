@@ -70,7 +70,8 @@ fn main() {
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets(LOG_TARGETS)
-                .level(LevelFilter::Info)
+                .level(LevelFilter::Warn)
+                .level_for("knowling", LevelFilter::Info)
                 .build(),
         )
         .plugin(
