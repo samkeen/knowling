@@ -8,6 +8,7 @@ use tauri_plugin_store::StoreBuilder;
 
 use crate::AppState;
 use crate::llm::llm_request;
+use crate::notebook::db::Documentable;
 use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
 
@@ -27,7 +28,7 @@ pub async fn save_note(
     let mut notebook = notebook.notebook.lock().await;
     match notebook.upsert_note(id, text).await {
         Ok(note) => {
-            info!("Note[{}] saved", note.id);
+            info!("Note[{}] saved", note.id());
             Ok(note)
         }
         Err(e) => Err(format!("Error: {}", e)),
@@ -70,7 +71,7 @@ pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri:
             let note_content = match note
             {
                 None => { "".to_string() }
-                Some(note) => { note.text }
+                Some(note) => { note.text().to_string() }
             };
             if api_key.is_empty() { return Err("Unable to retrieve LLM API Key".to_string()); }
             // combine the prompt and the note content

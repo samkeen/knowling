@@ -1,4 +1,4 @@
-use std::{fmt, fs};
+use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -11,11 +11,11 @@ use serde::Serialize;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::notebook::db::{EmbedStore, EmbedStoreError};
+use crate::notebook::db::{Documentable, EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
 use crate::notebook::notebook_repository::{NotebookRepository, NotebookRepositoryError};
 
-mod db;
+pub mod db;
 pub mod note;
 mod notebook_repository;
 
@@ -49,13 +49,13 @@ impl Notebook {
     ) -> Result<Note, NotebookError> {
         match id {
             Some(id) => {
-                let existing_note = self.embed_store.get(id).await?;
+                let existing_note: Option<Note> = self.embed_store.get(id).await?;
                 match existing_note {
                     Some(mut note) => {
-                        note.text = content.to_string();
-                        info!("updating note {} in models db", note.id);
+                        note.set_text(content.to_string());
+                        info!("updating note {} in models db", note.id());
                         self.models_store.update_note(&note).await?;
-                        info!("updating note {} in embeddings db", note.id);
+                        info!("updating note {} in embeddings db", note.id());
                         self.embed_store.update(vec![note.to_owned()]).await?;
                         Ok(note.clone())
                     }
@@ -63,10 +63,11 @@ impl Notebook {
                 }
             }
             None => {
-                let note = Note::new(content);
-                info!("Adding new note[{}] to models database", note.get_id());
+                let mut note = Note::default();
+                note.set_text(content.to_string());
+                info!("Adding new note[{}] to models database", note.id());
                 self.models_store.add_note(&note).await?;
-                info!("Adding new note[{}] to embeddings database", note.get_id());
+                info!("Adding new note[{}] to embeddings database", note.id());
                 self.embed_store.add(vec![note.clone()]).await?;
                 info!("Note added to database");
                 Ok(note)
@@ -117,14 +118,14 @@ impl Notebook {
         limit: Option<usize>,
         threshold: Option<f32>,
     ) -> Result<Vec<(Note, f32)>, NotebookError> {
-        log::info!("Getting related notes for Note[{}]", note.get_id());
+        log::info!("Getting related notes for Note[{}]", note.id());
         let limit = limit.unwrap_or(SIMILARS_DEFAULT_LIMIT);
         let threshold = threshold.unwrap_or(SIMILARS_DEFAULT_THRESHOLD);
         let result = self
             .embed_store
             .search(
-                &note.text,
-                Some(format!("id NOT IN ('{}')", note.get_id()).as_str()),
+                &note.text(),
+                Some(format!("id NOT IN ('{}')", note.id()).as_str()),
                 // the filter will reduce the number of returned results by 1
                 Some(limit + 1),
             )
@@ -145,7 +146,7 @@ impl Notebook {
             threshold,
             results_outside_threshold
                 .iter()
-                .map(|(note, score)| format!("{}:{}", note.get_id(), score))
+                .map(|(note, score)| format!("{}:{}", note.id(), score))
                 .collect::<Vec<_>>()
         );
         Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
@@ -206,7 +207,8 @@ impl Notebook {
             if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
                 let content = fs::read_to_string(&path)
                     .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-                let note = Note::new(&content);
+                let mut note = Note::default();
+                note.set_text(content);
                 imported_notes.push(note);
             }
         }
@@ -219,7 +221,7 @@ impl Notebook {
     }
 
     fn note_title(&self, note: &Note) -> String {
-        let mut title = note.text.lines().next().unwrap_or("").to_string();
+        let mut title = note.text().lines().next().unwrap_or("").to_string();
 
         // Strip any leading "#" or spaces from the title
         while title.starts_with('#') || title.starts_with(' ') {
@@ -270,7 +272,7 @@ impl Notebook {
     fn write_note_to_file(&self, note: &Note, file_path: &PathBuf) -> Result<(), NotebookError> {
         let mut file =
             fs::File::create(file_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-        file.write_all(note.text.as_bytes())
+        file.write_all(note.text().as_bytes())
             .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
         Ok(())
     }

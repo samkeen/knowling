@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use log::log;
 use rusqlite::{Connection, params};
 use serde::Serialize;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+use crate::notebook::db::Documentable;
 use crate::notebook::note::Note;
 
 pub struct NotebookRepository {
@@ -27,20 +27,20 @@ impl NotebookRepository {
 
     pub async fn add_note(&self, note: &Note) -> Result<(), NotebookRepositoryError> {
         let conn = self.conn.lock().await;
-        log::info!("Adding note {} to models db", note.id);
+        log::info!("Adding note {} to models db", note.id());
         conn.execute(
             "INSERT INTO notes (id, content) VALUES (?1, ?2)",
-            (&note.id, &note.text),
+            (&note.id(), &note.text()),
         )?;
         Ok(())
     }
 
     pub async fn update_note(&self, note: &Note) -> Result<(), NotebookRepositoryError> {
         let conn = self.conn.lock().await;
-        log::info!("Updating note {} in models db", note.id);
+        log::info!("Updating note {} in models db", note.id());
         conn.execute(
             "UPDATE notes SET content = ?1 WHERE id = ?2",
-            (&note.text, &note.id),
+            (&note.text(), &note.id()),
         )?;
         Ok(())
     }

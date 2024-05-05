@@ -1,6 +1,4 @@
-use std::error::Error;
 use std::fmt;
-use std::fmt::Formatter;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -29,12 +27,24 @@ const COLUMN_ID: &str = "id";
 const COLUMN_EMBEDDINGS: &str = "embeddings";
 const COLUMN_TEXT: &str = "text";
 
-#[derive(Debug, Clone, Serialize)]
+pub trait Documentable {
+    fn id(&self) -> &str;
+    fn text(&self) -> &str;
+    fn created(&self) -> i64;
+    fn modified(&self) -> i64;
+
+    fn set_id(&mut self, id: String);
+    fn set_text(&mut self, text: String);
+    fn set_created(&mut self, created: i64);
+    fn set_modified(&mut self, modified: i64);
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct Document {
-    pub(crate) id: String,
-    pub text: String,
-    pub created: i64,
-    pub modified: i64,
+    id: String,
+    text: String,
+    created: i64,
+    modified: i64,
 }
 
 impl Document {
@@ -59,13 +69,13 @@ impl Document {
     }
 
     /// Generates a random id for a Document.
-    /// @TODO move the out of 
+    /// The id is a 6-character string composed of alphanumeric characters.
     fn generate_id() -> String {
         let mut rng = rand::thread_rng();
         let id: String = std::iter::repeat(())
             .map(|()| rng.sample(Alphanumeric))
             .map(char::from)
-            .take(15)
+            .take(6)
             .collect();
         id
     }
@@ -74,6 +84,40 @@ impl Document {
 impl PartialEq for Document {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+    }
+}
+
+impl Documentable for Document {
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn text(&self) -> &str {
+        &self.text
+    }
+
+    fn created(&self) -> i64 {
+        self.created
+    }
+
+    fn modified(&self) -> i64 {
+        self.modified
+    }
+
+    fn set_id(&mut self, id: String) {
+        self.id = id;
+    }
+
+    fn set_text(&mut self, text: String) {
+        self.text = text;
+    }
+
+    fn set_created(&mut self, created: i64) {
+        self.created = created;
+    }
+
+    fn set_modified(&mut self, modified: i64) {
+        self.modified = modified;
     }
 }
 
@@ -104,25 +148,24 @@ impl Serialize for EmbedStoreError {
             S: serde::Serializer,
     {
         match self {
-            EmbedStoreError::VectorDb(err) => {
-                serializer.serialize_newtype_variant(
-                    "EmbedStoreError",
-                    0,
-                    "VectorDb",
-                    &err.to_string(),
-                )
-            }
-            EmbedStoreError::Arrow(err) => {
-                serializer.serialize_newtype_variant("EmbedStoreError", 1, "Arrow", &err.to_string())
-            }
-            EmbedStoreError::Embedding(err) => {
-                serializer.serialize_newtype_variant(
-                    "EmbedStoreError",
-                    2,
-                    "Embedding",
-                    &err.to_string(),
-                )
-            }
+            EmbedStoreError::VectorDb(err) => serializer.serialize_newtype_variant(
+                "EmbedStoreError",
+                0,
+                "VectorDb",
+                &err.to_string(),
+            ),
+            EmbedStoreError::Arrow(err) => serializer.serialize_newtype_variant(
+                "EmbedStoreError",
+                1,
+                "Arrow",
+                &err.to_string(),
+            ),
+            EmbedStoreError::Embedding(err) => serializer.serialize_newtype_variant(
+                "EmbedStoreError",
+                2,
+                "Embedding",
+                &err.to_string(),
+            ),
             EmbedStoreError::Runtime(err) => {
                 serializer.serialize_newtype_variant("EmbedStoreError", 3, "Runtime", err)
             }
@@ -144,11 +187,11 @@ impl EmbedStore {
         })
     }
 
-    pub async fn add(&self, documents: Vec<Document>) -> Result<(), EmbedStoreError> {
-        let alt_ids: Vec<String> = documents.iter().map(|doc| doc.id.clone()).collect();
-        let text: Vec<String> = documents.iter().map(|doc| doc.text.clone()).collect();
-        let created: Vec<i64> = documents.iter().map(|doc| doc.created).collect();
-        let modified: Vec<i64> = documents.iter().map(|doc| doc.modified).collect();
+    pub async fn add<D: Documentable>(&self, documents: Vec<D>) -> Result<(), EmbedStoreError> {
+        let alt_ids: Vec<String> = documents.iter().map(|doc| doc.id().to_string()).collect();
+        let text: Vec<String> = documents.iter().map(|doc| doc.text().to_string()).collect();
+        let created: Vec<i64> = documents.iter().map(|doc| doc.created()).collect();
+        let modified: Vec<i64> = documents.iter().map(|doc| doc.modified()).collect();
 
         log::info!("Saving Documents: {:?}", alt_ids);
         let embeddings = self.create_embeddings(&text)?;
@@ -191,12 +234,12 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
-    pub async fn search(
+    pub async fn search<D: Documentable + Default>(
         &self,
         search_text: &str,
         filter: Option<&str>,
         limit: Option<usize>,
-    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
+    ) -> Result<Vec<(D, f32)>, EmbedStoreError> {
         let query = self.create_embeddings(&[search_text.to_string()])?;
         // flattening a 2D vector into a 1D vector. This is necessary because the search
         // function of the Table trait expects a 1D vector as input. However, the
@@ -209,12 +252,12 @@ impl EmbedStore {
         self.execute_search(query, filter, limit).await
     }
 
-    async fn execute_search(
+    async fn execute_search<D: Documentable + Default>(
         &self,
         query: Vec<f32>,
         filter: Option<&str>,
         limit: Option<usize>,
-    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
+    ) -> Result<Vec<(D, f32)>, EmbedStoreError> {
         // let limit = limit.unwrap_or(25);
         let mut query_builder = self
             .table
@@ -241,11 +284,11 @@ impl EmbedStore {
         Ok(documents)
     }
 
-    async fn execute_query(
+    async fn execute_query<D: Documentable + Default>(
         &self,
         filter: Option<&str>,
         limit: Option<usize>,
-    ) -> Result<Vec<Document>, EmbedStoreError> {
+    ) -> Result<Vec<D>, EmbedStoreError> {
         let mut query_builder = self.table.query();
         if let Some(filter_clause) = filter {
             query_builder = query_builder.only_if(filter_clause);
@@ -268,7 +311,10 @@ impl EmbedStore {
         let documents = self.record_to_document(record_batches)?;
         Ok(documents)
     }
-    pub async fn get(&self, id: &str) -> Result<Option<Document>, EmbedStoreError> {
+    pub async fn get<D: Documentable + Default>(
+        &self,
+        id: &str,
+    ) -> Result<Option<D>, EmbedStoreError> {
         let filter = format!("id = '{}'", id);
         let mut result = self.execute_query(Some(&filter), None).await?;
         assert!(
@@ -278,7 +324,9 @@ impl EmbedStore {
         Ok(result.pop())
     }
 
-    pub async fn get_all(&self) -> Result<(Vec<Document>, usize), EmbedStoreError> {
+    pub async fn get_all<D: Documentable + Default>(
+        &self,
+    ) -> Result<(Vec<D>, usize), EmbedStoreError> {
         let total_records = self.record_count().await?;
         let documents = self.execute_query(None, None).await?;
         log::info!(
@@ -302,12 +350,18 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
-    pub async fn update(&self, mut documents: Vec<Document>) -> Result<(), EmbedStoreError> {
-        let ids: Vec<String> = documents.iter().map(|doc| doc.id.clone()).collect();
+    pub async fn update<D: Documentable>(
+        &self,
+        mut documents: Vec<D>,
+    ) -> Result<(), EmbedStoreError> {
+        let ids: Vec<String> = documents
+            .iter()
+            .map(|doc| doc.id().to_string().clone())
+            .collect();
         self.delete(&ids).await?;
 
         let now = Utc::now().timestamp();
-        documents.iter_mut().for_each(|doc| doc.modified = now);
+        documents.iter_mut().for_each(|doc| doc.set_modified(now));
 
         self.add(documents).await
     }
@@ -321,11 +375,11 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
-    fn record_to_document_with_distances(
+    fn record_to_document_with_distances<D: Documentable + Default>(
         &self,
         record_batches: Vec<RecordBatch>,
-    ) -> Result<Vec<(Document, f32)>, EmbedStoreError> {
-        let mut docs_with_distance: Vec<(Document, f32)> = Vec::new();
+    ) -> Result<Vec<(D, f32)>, EmbedStoreError> {
+        let mut docs_with_distance: Vec<(D, f32)> = Vec::new();
         if record_batches.is_empty() {
             return Ok(vec![]);
         }
@@ -342,15 +396,13 @@ impl EmbedStore {
                 let distance = distances.value(index);
                 let created = created_values.value(index);
                 let modified = modified_values.value(index);
-                docs_with_distance.push((
-                    Document {
-                        id,
-                        text,
-                        created,
-                        modified,
-                    },
-                    distance,
-                ))
+                let mut document = D::default();
+                document.set_id(id);
+                document.set_text(text);
+                document.set_created(created);
+                document.set_modified(modified);
+
+                docs_with_distance.push((document, distance));
             });
         }
         log::info!(
@@ -361,11 +413,11 @@ impl EmbedStore {
         Ok(docs_with_distance)
     }
 
-    fn record_to_document(
+    fn record_to_document<D: Documentable + Default>(
         &self,
         record_batches: Vec<RecordBatch>,
-    ) -> Result<Vec<Document>, EmbedStoreError> {
-        let mut documents: Vec<Document> = Vec::new();
+    ) -> Result<Vec<D>, EmbedStoreError> {
+        let mut documents: Vec<D> = Vec::new();
         if record_batches.is_empty() {
             return Ok(vec![]);
         }
@@ -380,12 +432,12 @@ impl EmbedStore {
                 let text = texts.value(index).to_string();
                 let created = created_values.value(index);
                 let modified = modified_values.value(index);
-                documents.push(Document {
-                    id,
-                    text,
-                    created,
-                    modified,
-                });
+                let mut document = D::default();
+                document.set_id(id);
+                document.set_text(text);
+                document.set_created(created);
+                document.set_modified(modified);
+                documents.push(document);
             });
         }
         log::info!("Converted [{}] batch results to Documents", documents.len());
@@ -396,9 +448,10 @@ impl EmbedStore {
         let db_path = data_dir.join(DB_NAME);
         log::info!("Connecting to db at path: '{:?}'", db_path);
         match db_path.to_str() {
-            None => Err(EmbedStoreError::Runtime(
-                format!("Failed to convert db_path: {:?} to string", db_path),
-            )),
+            None => Err(EmbedStoreError::Runtime(format!(
+                "Failed to convert db_path: {:?} to string",
+                db_path
+            ))),
             Some(path) => Ok(connect(path).execute().await?),
         }
     }
