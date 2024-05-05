@@ -23,16 +23,32 @@ pub async fn save_note(
     id: Option<&str>,
     text: &str,
 ) -> Result<Note, String> {
-    log::info!("Saving note: '{}'", text);
+    info!("Saving note: '{}'", text);
     let mut notebook = notebook.notebook.lock().await;
     match notebook.upsert_note(id, text).await {
         Ok(note) => {
-            log::info!("Note[{}] saved", note.id);
+            info!("Note[{}] saved", note.id);
             Ok(note)
         }
         Err(e) => Err(format!("Error: {}", e)),
     }
 }
+
+// #[tauri::command]
+// pub async fn add_category_to_note(
+//     notebook: State<'_, AppState>,
+//     category: &str,
+// ) -> Result<Note, String> {
+//     info!("Adding category: '{}' to note [{}]", text);
+//     let mut notebook = notebook.notebook.lock().await;
+//     match notebook.upsert_note(id, text).await {
+//         Ok(note) => {
+//             info!("Note[{}] saved", note.id);
+//             Ok(note)
+//         }
+//         Err(e) => Err(format!("Error: {}", e)),
+//     }
+// }
 
 #[tauri::command]
 pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri::AppHandle,
@@ -82,7 +98,7 @@ pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri:
 pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, NotebookError> {
     let notebook = notebook.notebook.lock().await;
     let notes = notebook.get_notes().await?;
-    log::info!("Found [{}] existing notes", notes.len());
+    info!("Found [{}] existing notes", notes.len());
     Ok(notes)
 }
 
@@ -93,7 +109,7 @@ pub async fn export_notes(notebook: State<'_, AppState>) -> Result<(usize, Strin
         "Failed to resolve path to downloads directory".to_string(),
     ))?;
     let export_result = notebook.export_notes(target_dir.clone()).await?;
-    log::info!(
+    info!(
         "Exported [{}] existing notes to {}",
         export_result.0,
         export_result.1
@@ -106,10 +122,10 @@ pub async fn import_notes(
     notebook: State<'_, AppState>,
     path: &str,
 ) -> Result<usize, NotebookError> {
-    log::info!("Attempting import of notes from: {}", path);
+    info!("Attempting import of notes from: {}", path);
     let notebook = notebook.notebook.lock().await;
     let num_imports = notebook.import_notes(&PathBuf::from(path)).await?;
-    log::info!("Imported [{}] notes from {}", num_imports, path);
+    info!("Imported [{}] notes from {}", num_imports, path);
     Ok(num_imports)
 }
 

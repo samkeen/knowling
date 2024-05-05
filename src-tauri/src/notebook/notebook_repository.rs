@@ -29,7 +29,7 @@ impl NotebookRepository {
         let conn = self.conn.lock().await;
         log::info!("Adding note {} to models db", note.id);
         conn.execute(
-            "INSERT INTO notes (embed_id, content) VALUES (?1, ?2)",
+            "INSERT INTO notes (id, content) VALUES (?1, ?2)",
             (&note.id, &note.text),
         )?;
         Ok(())
@@ -39,7 +39,7 @@ impl NotebookRepository {
         let conn = self.conn.lock().await;
         log::info!("Updating note {} in models db", note.id);
         conn.execute(
-            "UPDATE notes SET content = ?1 WHERE embed_id = ?2",
+            "UPDATE notes SET content = ?1 WHERE id = ?2",
             (&note.text, &note.id),
         )?;
         Ok(())
@@ -49,7 +49,7 @@ impl NotebookRepository {
         let conn = self.conn.lock().await;
         log::info!("Deleting note {} in models db", id);
         conn.execute(
-            "DELETE FROM notes WHERE embed_id = ?1",
+            "DELETE FROM notes WHERE id = ?1",
             params![id],
         )?;
         Ok(())
@@ -69,15 +69,14 @@ impl NotebookRepository {
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            embed_id VARCHAR(12) NOT NULL,
+            id CHAR(15) PRIMARY KEY,
             content TEXT
         )", ())?;
 
 
         conn.execute("
             CREATE TABLE IF NOT EXISTS note_category (
-            note_id INTEGER,
+            note_id CHAR(15),
             category_name NVARCHAR(128),
             PRIMARY KEY (note_id, category_name),
             FOREIGN KEY (note_id) REFERENCES notes (id),

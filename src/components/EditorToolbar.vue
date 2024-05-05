@@ -4,10 +4,20 @@
       <RouterLink :to="{name: 'Home'}" class="">✗</RouterLink>
     </div>
     <div class="flex items-center space-x-2">
-      <button class="">☆</button>
-      <button @click="openQuestionDialog" class="">?</button>
+      <button @click="openAddCatModal" class="btn btn-circle btn-xs">+</button>
+      <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="modal-content bg-base-100 rounded-md shadow-xl p-2">
+          <input v-model="newCategory" type="text" placeholder="add category" class="input input-bordered w-full mb-4"/>
+          <div class="flex justify-end space-x-2">
+            <button @click="addCategory" class="btn btn-sm">Save</button>
+            <button @click="closeAddCatModal" class="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-circle btn-xs">☆</button>
+      <button @click="openQuestionDialog" class="btn btn-circle btn-xs">?</button>
       <div class="relative">
-        <button @click="toggleMenu" class="">…</button>
+        <button @click="toggleMenu" class="btn btn-circle btn-xs">…</button>
         <div v-if="showMenu" class="absolute right-0 mt-2 py-2 w-48 rounded-md shadow-xl z-20">
           <a @click="handleDeleteNote" href="#"
              class="block px-4 py-2 text-sm">Delete</a>
@@ -91,10 +101,28 @@ const showResponseDialog = ref(false);
 const response = ref('');
 const copyClicked = ref(false);
 const isLoading = ref(false);
+let showModal = ref(false);
+let newCategory = ref('');
 
 const route = useRoute();
 const router = useRouter();
 let noteId = ref(route.params.id || null);
+
+const openAddCatModal = () => {
+  showModal.value = true;
+};
+
+const closeAddCatModal = () => {
+  newCategory.value = '';
+  showModal.value = false;
+};
+
+const addCategory = () => {
+  // Code to process newCategory
+  console.log(newCategory.value);
+  newCategory.value = '';
+  showModal.value = false;
+};
 
 function toggleMenu() {
   showMenu.value = !showMenu.value;

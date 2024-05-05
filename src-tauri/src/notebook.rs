@@ -73,6 +73,20 @@ impl Notebook {
             }
         }
     }
+    // ======================================================================================
+    // I NEED TO REFACTOR DB.RS TO TAKE ANY STRUCT THAT HAS THESE FIELDS
+    // THUS I CAN CREATE A TRUE NOTE STRUCT THAT HAS ADDITIONAL FIELDS LIKE CATEGORIES.
+    //     pub(crate) id: String,
+    //     pub text: String,
+    //     pub created: i64,
+    //     pub modified: i64,
+    // pub async fn add_category_to_note(&self, note_id: &str, category: &str) -> Result<(), NotebookError> {
+    //     let note = self.get_note_by_id(note_id).await?;
+    //     let mut note = note.ok_or(NotebookError::NoteNotFound(note_id.to_string()))?;
+    //     note.categories.push(category.to_string());
+    //     self.upsert_note(Some(&note.id), &note.content).await?;
+    //     Ok(())
+    // }
 
     pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
         let (existing_notes, _total_records) = self

@@ -59,13 +59,13 @@ impl Document {
     }
 
     /// Generates a random id for a Document.
-    /// The id is a 6-character string composed of alphanumeric characters.
+    /// @TODO move the out of 
     fn generate_id() -> String {
         let mut rng = rand::thread_rng();
         let id: String = std::iter::repeat(())
             .map(|()| rng.sample(Alphanumeric))
             .map(char::from)
-            .take(6)
+            .take(15)
             .collect();
         id
     }

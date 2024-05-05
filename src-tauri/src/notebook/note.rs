@@ -3,6 +3,7 @@ use crate::notebook::db::Document;
 /// Alias the Document type to Note
 pub type Note = Document;
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
