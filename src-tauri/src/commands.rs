@@ -35,21 +35,23 @@ pub async fn save_note(
     }
 }
 
-// #[tauri::command]
-// pub async fn add_category_to_note(
-//     notebook: State<'_, AppState>,
-//     category: &str,
-// ) -> Result<Note, String> {
-//     info!("Adding category: '{}' to note [{}]", text);
-//     let mut notebook = notebook.notebook.lock().await;
-//     match notebook.upsert_note(id, text).await {
-//         Ok(note) => {
-//             info!("Note[{}] saved", note.id);
-//             Ok(note)
-//         }
-//         Err(e) => Err(format!("Error: {}", e)),
-//     }
-// }
+#[tauri::command]
+pub async fn add_category_to_note(
+    notebook: State<'_, AppState>,
+    note_id: &str,
+    category: &str,
+) -> Result<(), String> {
+    info!("Adding category: '{}' to note [{}]", category, note_id);
+    let mut notebook = notebook.notebook.lock().await;
+    // match notebook.upsert_note(id, text).await {
+    //     Ok(note) => {
+    //         info!("Note[{}] saved", note.id);
+    //         Ok(note)
+    //     }
+    //     Err(e) => Err(format!("Error: {}", e)),
+    // }
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri::AppHandle,

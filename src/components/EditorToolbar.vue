@@ -9,7 +9,7 @@
         <div class="modal-content bg-base-100 rounded-md shadow-xl p-2">
           <input v-model="newCategory" type="text" placeholder="add category" class="input input-bordered w-full mb-4"/>
           <div class="flex justify-end space-x-2">
-            <button @click="addCategory" class="btn btn-sm">Save</button>
+            <button @click="handleAddCategory" class="btn btn-sm">Save</button>
             <button @click="closeAddCatModal" class="btn btn-ghost btn-sm">Cancel</button>
           </div>
         </div>
@@ -117,12 +117,22 @@ const closeAddCatModal = () => {
   showModal.value = false;
 };
 
-const addCategory = () => {
+async function handleAddCategory() {
   // Code to process newCategory
-  console.log(newCategory.value);
-  newCategory.value = '';
-  showModal.value = false;
-};
+  try {
+    console.log("Adding category")
+    let note = await invoke("add_category_to_note", {
+      noteId: noteId.value,
+      category: newCategory.value
+    });
+    info(`Added cat[${newCategory.value}] to note`);
+    newCategory.value = '';
+    showModal.value = false;
+  } catch (error) {
+    info(`Adding cat[${newCategory.value}] to note failed: ${error}`);
+    // Handle the error as needed, e.g., show a user-friendly message
+  }
+}
 
 function toggleMenu() {
   showMenu.value = !showMenu.value;
