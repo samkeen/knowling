@@ -129,6 +129,7 @@ function toggleMenu() {
 }
 
 function handleDeleteNote() {
+  info(`Deleting note: ${noteId.value}`)
   deleteNote(noteId.value, router);
 }
 

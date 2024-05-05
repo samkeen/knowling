@@ -6,6 +6,8 @@ use std::sync::Arc;
 use chrono::Utc;
 use fastembed::TextEmbedding;
 use log::info;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use rusqlite::Connection;
 use serde::Serialize;
 use thiserror::Error;
@@ -64,6 +66,7 @@ impl Notebook {
             }
             None => {
                 let mut note = Note::default();
+                note.set_id(Notebook::generate_id());
                 note.set_text(content.to_string());
                 info!("Adding new note[{}] to models database", note.id());
                 self.models_store.add_note(&note).await?;
@@ -208,6 +211,7 @@ impl Notebook {
                 let content = fs::read_to_string(&path)
                     .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
                 let mut note = Note::default();
+                note.set_id(Notebook::generate_id());
                 note.set_text(content);
                 imported_notes.push(note);
             }
@@ -275,6 +279,18 @@ impl Notebook {
         file.write_all(note.text().as_bytes())
             .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
         Ok(())
+    }
+
+    /// Generates a random id for a Document.
+    /// The id is a 6-character string composed of alphanumeric characters.
+    pub fn generate_id() -> String {
+        let mut rng = rand::thread_rng();
+        let id: String = std::iter::repeat(())
+            .map(|()| rng.sample(Alphanumeric))
+            .map(char::from)
+            .take(15)
+            .collect();
+        id
     }
 }
 

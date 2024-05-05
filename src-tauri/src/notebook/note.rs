@@ -66,6 +66,6 @@ mod tests {
         let content = "Test Note";
         let mut note = Note::default();
         note.set_text(content.to_string());
-        assert_eq!(note.get_content(), content);
+        assert_eq!(note.text(), content);
     }
 }
