@@ -36,6 +36,16 @@ pub async fn save_note(
 }
 
 #[tauri::command]
+pub async fn delete_all_notes(
+    notebook: State<'_, AppState>,
+) -> Result<(), String> {
+    info!("Deleting all notes");
+    let notebook = notebook.notebook.lock().await;
+    notebook.delete_all_notes().await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn add_category_to_note(
     notebook: State<'_, AppState>,
     note_id: &str,

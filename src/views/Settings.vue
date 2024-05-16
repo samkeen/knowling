@@ -62,6 +62,16 @@
     <input v-model="anthropicApiKey" id="anthropic-api-key" type="password" placeholder="Type here"
            class="input input-bordered w-full max-w-xs">
     <button @click="persistAnthropicKey()" class="btn btn-outline ml-4 mt-4">Save</button>
+
+    <h3 class="text-lg font-bold mt-4">Delete all content</h3>
+    <div class="flex items-center mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-8 h-8 mr-2 stroke-error">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+      Warning: This action cannot be undone. Deleting all content will permanently remove all your notes.
+    </div>
+    <button @click="deleteAllContent" class="btn btn-error">Delete all content</button>
   </div>
 
 </template>
@@ -96,6 +106,17 @@ async function persistAnthropicKey() {
   info(`Persisting Anthropic API Key: ${anthropicApiKey.value.substring(0, 4)}...`);
   await store.set("anthropicApiKey", anthropicApiKey.value);
   await store.save();
+}
+
+async function deleteAllContent() {
+  try {
+    await invoke("delete_all_notes");
+    info("All notes deleted successfully");
+    // Optionally, you can display a success message or perform any additional actions
+  } catch (err) {
+    error("Failed to delete all notes:", err);
+    // Optionally, you can display an error message or handle the error
+  }
 }
 
 async function exportNotes() {

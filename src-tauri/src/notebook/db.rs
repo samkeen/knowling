@@ -350,6 +350,17 @@ impl EmbedStore {
             .map_err(EmbedStoreError::from)
     }
 
+    pub async fn empty_db(&self) -> Result<(), EmbedStoreError> {
+        // get all records, then call delete on each
+        let (documents, _) = self.get_all::<Document>().await?;
+        // build a Vec<String> of document ids
+        let document_ids: Vec<String> = documents.iter().map(|doc| doc.id().to_string()).collect();
+        for id in document_ids.into_iter() {
+            self.delete(&vec![id]).await?;
+        }
+        Ok(())
+    }
+
     pub async fn update<D: Documentable>(
         &self,
         mut documents: Vec<D>,

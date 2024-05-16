@@ -9,8 +9,8 @@ use tauri::Manager;
 use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
 
-use commands::{add_category_to_note, delete_note, export_notes, get_note_by_id, get_notes,
-               import_notes, prompt_about_note, save_note};
+use commands::{add_category_to_note, delete_all_notes, delete_note, export_notes, get_note_by_id,
+               get_notes, import_notes, prompt_about_note, save_note};
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
@@ -89,6 +89,7 @@ fn main() {
             delete_note,
             prompt_about_note,
             add_category_to_note,
+            delete_all_notes
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

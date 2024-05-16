@@ -83,6 +83,11 @@ impl Notebook {
         }
     }
 
+    pub async fn delete_all_notes(&self) -> Result<(), NotebookError> {
+        self.embed_store.empty_db().await?;
+        Ok(())
+    }
+
     pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
         let (existing_notes, _total_records) = self
             .embed_store
@@ -204,6 +209,10 @@ impl Notebook {
                 let mut note = Note::default();
                 note.set_id(Notebook::generate_id());
                 note.set_text(content);
+                // get the current timestamp
+                let now = Utc::now().timestamp();
+                note.set_created(now);
+                note.set_modified(now);
                 imported_notes.push(note);
             }
         }
