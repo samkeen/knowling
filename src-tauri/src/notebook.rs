@@ -44,12 +44,16 @@ impl Notebook {
         Ok(Notebook { embed_store, models_store: nb_repository })
     }
 
+    /// Rather than create/update we only have upsert
+    /// Update: If id is given
+    /// Create: If no id given
     pub async fn upsert_note(
         &mut self,
         id: Option<&str>,
         content: &str,
     ) -> Result<Note, NotebookError> {
         match id {
+            // UPDATE
             Some(id) => {
                 let existing_note: Option<Note> = self.embed_store.get(id).await?;
                 match existing_note {
@@ -64,6 +68,7 @@ impl Notebook {
                     None => Err(NotebookError::NoteNotFound(id.to_string())),
                 }
             }
+            // CREATE
             None => {
                 let mut note = Note::default();
                 note.set_id(Notebook::generate_id());
@@ -77,20 +82,6 @@ impl Notebook {
             }
         }
     }
-    // ======================================================================================
-    // I NEED TO REFACTOR DB.RS TO TAKE ANY STRUCT THAT HAS THESE FIELDS
-    // THUS I CAN CREATE A TRUE NOTE STRUCT THAT HAS ADDITIONAL FIELDS LIKE CATEGORIES.
-    //     pub(crate) id: String,
-    //     pub text: String,
-    //     pub created: i64,
-    //     pub modified: i64,
-    // pub async fn add_category_to_note(&self, note_id: &str, category: &str) -> Result<(), NotebookError> {
-    //     let note = self.get_note_by_id(note_id).await?;
-    //     let mut note = note.ok_or(NotebookError::NoteNotFound(note_id.to_string()))?;
-    //     note.categories.push(category.to_string());
-    //     self.upsert_note(Some(&note.id), &note.content).await?;
-    //     Ok(())
-    // }
 
     pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
         let (existing_notes, _total_records) = self
