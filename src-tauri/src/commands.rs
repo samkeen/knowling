@@ -8,6 +8,7 @@ use tauri_plugin_store::StoreBuilder;
 
 use crate::AppState;
 use crate::llm::llm_request;
+use crate::notebook::db::Documentable;
 use crate::notebook::note::Note;
 use crate::notebook::NotebookError;
 
@@ -23,15 +24,43 @@ pub async fn save_note(
     id: Option<&str>,
     text: &str,
 ) -> Result<Note, String> {
-    log::info!("Saving note: '{}'", text);
+    info!("Saving note: '{}'", text);
     let mut notebook = notebook.notebook.lock().await;
     match notebook.upsert_note(id, text).await {
         Ok(note) => {
-            log::info!("Note[{}] saved", note.id);
+            info!("Note[{}] saved", note.id());
             Ok(note)
         }
         Err(e) => Err(format!("Error: {}", e)),
     }
+}
+
+#[tauri::command]
+pub async fn delete_all_notes(
+    notebook: State<'_, AppState>,
+) -> Result<(), String> {
+    info!("Deleting all notes");
+    let notebook = notebook.notebook.lock().await;
+    notebook.delete_all_notes().await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn add_category_to_note(
+    notebook: State<'_, AppState>,
+    note_id: &str,
+    category: &str,
+) -> Result<(), String> {
+    info!("Adding category: '{}' to note [{}]", category, note_id);
+    let mut notebook = notebook.notebook.lock().await;
+    // match notebook.upsert_note(id, text).await {
+    //     Ok(note) => {
+    //         info!("Note[{}] saved", note.id);
+    //         Ok(note)
+    //     }
+    //     Err(e) => Err(format!("Error: {}", e)),
+    // }
+    Ok(())
 }
 
 #[tauri::command]
@@ -54,7 +83,7 @@ pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri:
             let note_content = match note
             {
                 None => { "".to_string() }
-                Some(note) => { note.text }
+                Some(note) => { note.text().to_string() }
             };
             if api_key.is_empty() { return Err("Unable to retrieve LLM API Key".to_string()); }
             // combine the prompt and the note content
@@ -82,7 +111,7 @@ pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri:
 pub async fn get_notes(notebook: State<'_, AppState>) -> Result<Vec<Note>, NotebookError> {
     let notebook = notebook.notebook.lock().await;
     let notes = notebook.get_notes().await?;
-    log::info!("Found [{}] existing notes", notes.len());
+    info!("Found [{}] existing notes", notes.len());
     Ok(notes)
 }
 
@@ -93,7 +122,7 @@ pub async fn export_notes(notebook: State<'_, AppState>) -> Result<(usize, Strin
         "Failed to resolve path to downloads directory".to_string(),
     ))?;
     let export_result = notebook.export_notes(target_dir.clone()).await?;
-    log::info!(
+    info!(
         "Exported [{}] existing notes to {}",
         export_result.0,
         export_result.1
@@ -106,10 +135,10 @@ pub async fn import_notes(
     notebook: State<'_, AppState>,
     path: &str,
 ) -> Result<usize, NotebookError> {
-    log::info!("Attempting import of notes from: {}", path);
+    info!("Attempting import of notes from: {}", path);
     let notebook = notebook.notebook.lock().await;
     let num_imports = notebook.import_notes(&PathBuf::from(path)).await?;
-    log::info!("Imported [{}] notes from {}", num_imports, path);
+    info!("Imported [{}] notes from {}", num_imports, path);
     Ok(num_imports)
 }
 

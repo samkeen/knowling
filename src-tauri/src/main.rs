@@ -9,7 +9,8 @@ use tauri::Manager;
 use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
 
-use commands::{delete_note, export_notes, get_note_by_id, get_notes, import_notes, prompt_about_note, save_note};
+use commands::{add_category_to_note, delete_all_notes, delete_note, export_notes, get_note_by_id,
+               get_notes, import_notes, prompt_about_note, save_note};
 
 use crate::commands::get_note_similarities;
 use crate::notebook::Notebook;
@@ -36,6 +37,7 @@ const LOG_TARGETS: [LogTarget; 2] = [LogTarget::Stdout, LogTarget::LogDir];
 
 fn main() {
     let app_dir = get_user_app_dir();
+    // log here in the event of a panic
     set_panic_hook(&app_dir);
 
     let text_embedding = TextEmbedding::try_new(InitOptions {
@@ -69,7 +71,8 @@ fn main() {
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets(LOG_TARGETS)
-                .level(LevelFilter::Info)
+                .level(LevelFilter::Warn)
+                .level_for("knowling", LevelFilter::Info)
                 .build(),
         )
         .plugin(
@@ -85,6 +88,8 @@ fn main() {
             get_note_similarities,
             delete_note,
             prompt_about_note,
+            add_category_to_note,
+            delete_all_notes
         ])
         // @TODO see https://blog.moonguard.dev/how-to-use-local-sqlite-database-with-tauri
         // .setup(|_app| {

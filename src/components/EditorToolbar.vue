@@ -4,10 +4,20 @@
       <RouterLink :to="{name: 'Home'}" class="">✗</RouterLink>
     </div>
     <div class="flex items-center space-x-2">
-      <button class="">☆</button>
-      <button @click="openQuestionDialog" class="">?</button>
+      <button @click="openAddCatModal" class="btn btn-circle btn-xs">+</button>
+      <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="modal-content bg-base-100 rounded-md shadow-xl p-2">
+          <input v-model="newCategory" type="text" placeholder="add category" class="input input-bordered w-full mb-4"/>
+          <div class="flex justify-end space-x-2">
+            <button @click="handleAddCategory" class="btn btn-sm">Save</button>
+            <button @click="closeAddCatModal" class="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-circle btn-xs">☆</button>
+      <button @click="openQuestionDialog" class="btn btn-circle btn-xs">?</button>
       <div class="relative">
-        <button @click="toggleMenu" class="">…</button>
+        <button @click="toggleMenu" class="btn btn-circle btn-xs">…</button>
         <div v-if="showMenu" class="absolute right-0 mt-2 py-2 w-48 rounded-md shadow-xl z-20">
           <a @click="handleDeleteNote" href="#"
              class="block px-4 py-2 text-sm">Delete</a>
@@ -16,25 +26,25 @@
     </div>
   </div>
   <div v-if="showQuestionDialog" class="fixed inset-0 flex items-center justify-center z-50">
-    <div class="rounded-lg p-6 w-96">
-      <textarea v-model="question" class="w-full h-32 p-2 border rounded"
-                placeholder="Enter your question about this note"></textarea>
-      <div class="mt-4 flex justify-end">
-        <button @click="submitQuestion" class="btn px-4 py-2 rounded" :disabled="isLoading">
-          <div v-if="isLoading" class="inline-block">
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                 viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-          <span v-else>Submit</span>
-        </button>
-        <button @click="closeQuestionDialog" class="btn ml-2 px-4 py-2 rounded">Cancel</button>
-      </div>
+  <div class="rounded-lg p-6 w-96 bg-base-100 border border-base-300">
+    <textarea v-model="question" class="w-full h-32 p-2 border rounded"
+              placeholder="Enter your question about this note"></textarea>
+    <div class="mt-4 flex justify-end">
+      <button @click="submitQuestion" class="btn px-4 py-2 rounded" :disabled="isLoading">
+        <div v-if="isLoading" class="inline-block">
+          <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <span v-else>Submit</span>
+      </button>
+      <button @click="closeQuestionDialog" class="btn ml-2 px-4 py-2 rounded">Cancel</button>
     </div>
   </div>
+</div>
   <div v-if="showResponseDialog" class="fixed inset-0 flex items-center justify-center z-50"
        @click.self="closeResponseDialog">
     <div class="p-6 w-2/3 max-h-screen shadow-xl bg-base-100 border rounded">
@@ -91,16 +101,45 @@ const showResponseDialog = ref(false);
 const response = ref('');
 const copyClicked = ref(false);
 const isLoading = ref(false);
+let showModal = ref(false);
+let newCategory = ref('');
 
 const route = useRoute();
 const router = useRouter();
 let noteId = ref(route.params.id || null);
+
+const openAddCatModal = () => {
+  showModal.value = true;
+};
+
+const closeAddCatModal = () => {
+  newCategory.value = '';
+  showModal.value = false;
+};
+
+async function handleAddCategory() {
+  // Code to process newCategory
+  try {
+    console.log("Adding category")
+    let note = await invoke("add_category_to_note", {
+      noteId: noteId.value,
+      category: newCategory.value
+    });
+    info(`Added cat[${newCategory.value}] to note`);
+    newCategory.value = '';
+    showModal.value = false;
+  } catch (error) {
+    info(`Adding cat[${newCategory.value}] to note failed: ${error}`);
+    // Handle the error as needed, e.g., show a user-friendly message
+  }
+}
 
 function toggleMenu() {
   showMenu.value = !showMenu.value;
 }
 
 function handleDeleteNote() {
+  info(`Deleting note: ${noteId.value}`)
   deleteNote(noteId.value, router);
 }
 
