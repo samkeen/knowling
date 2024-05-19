@@ -31,6 +31,8 @@ babel-bridge = { git = "https://github.com/samkeen/babel-bridge", branch = "main
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 thiserror = "1.0.59"
+vec-embed-store = "0.3.0"
+uuid = { version = "1.8.0", features = ["v4"] }
 
 
 [features]

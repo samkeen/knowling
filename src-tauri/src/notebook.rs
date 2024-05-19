@@ -1,23 +1,22 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use chrono::Utc;
-use fastembed::TextEmbedding;
 use log::info;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeStruct;
 use thiserror::Error;
 use tokio::sync::Mutex;
+use uuid::Uuid;
+use vec_embed_store::{EmbedDbError, EmbeddingEngineOptions, EmbeddingsDb, TextChunk};
 
-use crate::notebook::db::{Documentable, EmbedStore, EmbedStoreError};
 use crate::notebook::note::Note;
-use crate::notebook::notebook_repository::{NotebookRepository, NotebookRepositoryError};
+use crate::notebook::notebook_repository::NotebookRepository;
 
-pub mod db;
 pub mod note;
 mod notebook_repository;
 
@@ -25,17 +24,19 @@ const SIMILARS_DEFAULT_LIMIT: usize = 3;
 const SIMILARS_DEFAULT_THRESHOLD: f32 = 0.01;
 
 pub struct Notebook {
-    embed_store: EmbedStore,
+    embed_store: EmbeddingsDb,
     models_store: NotebookRepository,
 }
 
 impl Notebook {
     pub async fn new(
-        text_embedding: TextEmbedding,
+        embedding_engine_options: EmbeddingEngineOptions,
         app_dir: &Path,
     ) -> Result<Self, NotebookError> {
-        let embed_store = EmbedStore::new(text_embedding, app_dir)
-            .await?;
+        // cast app_dir to a &str
+        let app_dir_str = app_dir.to_str().ok_or(
+            NotebookError::FileAccess("Invalid app directory path".to_string()))?;
+        let embed_store = EmbeddingsDb::new(app_dir_str, embedding_engine_options).await?;
         let db_path = app_dir.join("db.sqlite");
         let conn = Arc::new(Mutex::new(Connection::open(&db_path)?));
         let nb_repository = NotebookRepository::new(conn);
@@ -55,59 +56,61 @@ impl Notebook {
         match id {
             // UPDATE
             Some(id) => {
-                let existing_note: Option<Note> = self.embed_store.get(id).await?;
+                // get the existing note
+                let existing_note = self.models_store.get_note(&id).await?;
                 match existing_note {
                     Some(mut note) => {
-                        note.set_text(content.to_string());
-                        info!("updating note {} in models db", note.id());
-                        self.models_store.update_note(&note).await?;
-                        info!("updating note {} in embeddings db", note.id());
-                        self.embed_store.update(vec![note.to_owned()]).await?;
-                        Ok(note.clone())
+                        info!("updating note {} in models db", note.get_id());
+                        let updated_note = self.models_store.update_note(&mut note).await?;
+                        info!("updating note {} in embeddings db", updated_note.get_id());
+                        let text_chunk = TextChunk {
+                            id: updated_note.get_text().to_string(),
+                            text: updated_note.get_text().to_string(),
+                        };
+                        self.embed_store.upsert_texts(&[text_chunk]).await?;
+                        Ok(updated_note)
                     }
                     None => Err(NotebookError::NoteNotFound(id.to_string())),
                 }
             }
             // CREATE
             None => {
-                let mut note = Note::default();
-                note.set_id(Notebook::generate_id());
-                note.set_text(content.to_string());
-                info!("Adding new note[{}] to models database", note.id());
+                let note = Note::new(&Notebook::generate_id(), &content.to_string());
+                info!("Adding new note[{}] to models database", note.get_id());
                 self.models_store.add_note(&note).await?;
-                info!("Adding new note[{}] to embeddings database", note.id());
-                self.embed_store.add(vec![note.clone()]).await?;
-                info!("Note added to database");
+                info!("Adding new note[{}] to embeddings database", note.get_id());
+                self.embed_store.upsert_texts(&vec![
+                    TextChunk {
+                        id: note.get_text().to_string(),
+                        text: note.get_text().to_string(),
+                    }
+                ]).await?;
                 Ok(note)
             }
         }
     }
 
     pub async fn delete_all_notes(&self) -> Result<(), NotebookError> {
+        info!("Deleting all notes from models db");
+        self.models_store.delete_all_notes().await?;
+        info!("Deleting all notes from embed db");
         self.embed_store.empty_db().await?;
         Ok(())
     }
 
     pub async fn get_notes(&self) -> Result<Vec<Note>, NotebookError> {
-        let (existing_notes, _total_records) = self
-            .embed_store
-            .get_all()
-            .await?;
-        Ok(existing_notes)
+        self.models_store.get_notes().await
     }
 
     pub async fn get_note_by_id(&self, id: &str) -> Result<Option<Note>, NotebookError> {
-        self.embed_store
-            .get(id)
-            .await
-            .map_err(|e| NotebookError::EmbeddingPersistence(e))
+        Ok(self.models_store.get_note(id).await?)
     }
 
     pub async fn delete_note(&mut self, id: &str) -> Result<(), NotebookError> {
         info!("Deleting note[{}] from models db", id);
         self.models_store.delete_note(id).await?;
         info!("Deleting note[{}] from embeddings db", id);
-        self.embed_store.delete(&vec![id]).await?;
+        self.embed_store.delete_texts(&[id.to_string()]).await?;
         Ok(())
     }
 
@@ -117,38 +120,32 @@ impl Notebook {
         limit: Option<usize>,
         threshold: Option<f32>,
     ) -> Result<Vec<(Note, f32)>, NotebookError> {
-        log::info!("Getting related notes for Note[{}]", note.id());
+        info!("Getting related notes for Note[{}]", note.get_id());
         let limit = limit.unwrap_or(SIMILARS_DEFAULT_LIMIT);
         let threshold = threshold.unwrap_or(SIMILARS_DEFAULT_THRESHOLD);
-        let result = self
+        let mut result_text_blocks = self
             .embed_store
-            .search(
-                &note.text(),
-                Some(format!("id NOT IN ('{}')", note.id()).as_str()),
-                // the filter will reduce the number of returned results by 1
-                Some(limit + 1),
-            )
+            .get_similar_to(&note.get_text())
+            .limit(limit)
+            .threshold(threshold)
+            .execute()
             .await
             .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
-        let results_outside_threshold: Vec<_> = result
-            .clone()
-            .into_iter()
-            .filter(|i| i.1 > threshold)
+        // remove the result_text_blocks where id == note.id
+        result_text_blocks.retain(|item| item.id != note.get_id());
+        let note_ids = result_text_blocks.iter().map(
+            |block| &block.id as &str
+        ).collect::<Vec<&str>>();
+        let result_notes = self.models_store.get_notes_by_ids(note_ids).await?;
+        let notes_map: HashMap<String, Note> = result_notes.into_iter().map(|note| (note.get_id().to_string(), note)).collect();
+
+        let combined: Vec<(Note, f32)> = result_text_blocks.iter()
+            .filter_map(|block| notes_map.get(&block.id).map(|note| (note.clone(), block.distance as f32)))
             .collect();
-        if results_outside_threshold.is_empty() {
-            info!("All results met the threshold of {}", threshold);
-            return Ok(result);
+        if combined.is_empty() {
+            info!("No similar note found at threshold: {}", threshold)
         }
-        info!(
-            "{} result(s) did not meet the threshold of {}: {:?}",
-            results_outside_threshold.len(),
-            threshold,
-            results_outside_threshold
-                .iter()
-                .map(|(note, score)| format!("{}:{}", note.id(), score))
-                .collect::<Vec<_>>()
-        );
-        Ok(result.into_iter().filter(|i| i.1 < threshold).collect())
+        Ok(combined)
     }
 
     pub async fn export_notes(
@@ -206,26 +203,26 @@ impl Notebook {
             if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
                 let content = fs::read_to_string(&path)
                     .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-                let mut note = Note::default();
-                note.set_id(Notebook::generate_id());
-                note.set_text(content);
-                // get the current timestamp
-                let now = Utc::now().timestamp();
-                note.set_created(now);
-                note.set_modified(now);
+                let note = Note::new(&Notebook::generate_id(), &content);
+                // Store the note in the models Db
+                self.models_store.add_note(&note).await?;
                 imported_notes.push(note);
             }
         }
-
+        // store all the embeddings for the notes
+        let text_chunks: Vec<TextChunk> = imported_notes
+            .iter()
+            .map(|note| note.to_text_chunk())
+            .collect();
         self.embed_store
-            .add(imported_notes.clone())
+            .upsert_texts(&text_chunks)
             .await?;
 
         Ok(imported_notes.len())
     }
 
     fn note_title(&self, note: &Note) -> String {
-        let mut title = note.text().lines().next().unwrap_or("").to_string();
+        let mut title = note.get_text().lines().next().unwrap_or("").to_string();
 
         // Strip any leading "#" or spaces from the title
         while title.starts_with('#') || title.starts_with(' ') {
@@ -254,6 +251,8 @@ impl Notebook {
 
         title
     }
+
+
     fn is_writable(&self, path: &PathBuf) -> bool {
         if let Ok(metadata) = fs::metadata(path) {
             if metadata.is_dir() {
@@ -276,31 +275,20 @@ impl Notebook {
     fn write_note_to_file(&self, note: &Note, file_path: &PathBuf) -> Result<(), NotebookError> {
         let mut file =
             fs::File::create(file_path).map_err(|e| NotebookError::FileAccess(e.to_string()))?;
-        file.write_all(note.text().as_bytes())
+        file.write_all(note.get_text().as_bytes())
             .map_err(|e| NotebookError::FileAccess(e.to_string()))?;
         Ok(())
     }
 
     /// Generates a random id for a Document.
     /// The id is a 6-character string composed of alphanumeric characters.
-    pub fn generate_id() -> String {
-        let mut rng = rand::thread_rng();
-        let id: String = std::iter::repeat(())
-            .map(|()| rng.sample(Alphanumeric))
-            .map(char::from)
-            .take(15)
-            .collect();
-        id
-    }
+    fn generate_id() -> String { Uuid::new_v4().to_string() }
 }
 
-#[derive(Error, Debug, Serialize)]
+#[derive(Error, Debug)]
 pub enum NotebookError {
     #[error("Persistence error: {0}")]
-    EmbeddingPersistence(#[from] EmbedStoreError),
-
-    #[error("Persistence error: {0}")]
-    ModelsDbPersistence(#[from] NotebookRepositoryError),
+    EmbeddingPersistence(#[from] EmbedDbError),
 
     #[error("Models db error: {0}")]
     ModelPersistence(String),
@@ -319,6 +307,39 @@ pub enum NotebookError {
 impl From<rusqlite::Error> for NotebookError {
     fn from(err: rusqlite::Error) -> NotebookError {
         NotebookError::ModelPersistence(err.to_string())
+    }
+}
+
+// EmbedDbError does not implement Serialize, so I need to do it manually
+impl Serialize for NotebookError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("NotebookError", 2)?;
+        match self {
+            NotebookError::EmbeddingPersistence(err) => {
+                state.serialize_field("type", "EmbeddingPersistence")?;
+                state.serialize_field("error", &format!("{:?}", err))?;
+            }
+            NotebookError::ModelPersistence(err) => {
+                state.serialize_field("type", "ModelPersistence")?;
+                state.serialize_field("error", err)?;
+            }
+            NotebookError::FileAccess(err) => {
+                state.serialize_field("type", "FileAccess")?;
+                state.serialize_field("error", err)?;
+            }
+            NotebookError::EmbeddingError(err) => {
+                state.serialize_field("type", "EmbeddingError")?;
+                state.serialize_field("error", err)?;
+            }
+            NotebookError::NoteNotFound(err) => {
+                state.serialize_field("type", "NoteNotFound")?;
+                state.serialize_field("error", err)?;
+            }
+        }
+        state.end()
     }
 }
 

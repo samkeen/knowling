@@ -158,7 +158,7 @@ async function importNotes() {
       importError.value = ''; // Clear any previous error message
     }
   } catch (err) {
-    error("Failed importing notes:", err);
+    error(`Failed importing notes: ${err}`);
     importError.value = `Failed to import notes: ${err.message}`;
     importResult.value = ''; // Clear any previous result message
   } finally {
