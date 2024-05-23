@@ -3,11 +3,11 @@
 
 use std::sync::Arc;
 
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use log::LevelFilter;
 use tauri::Manager;
 use tauri_plugin_log::LogTarget;
 use tokio::sync::Mutex;
+use vec_embed_store::EmbeddingEngineOptions;
 
 use commands::{add_category_to_note, delete_all_notes, delete_note, export_notes, get_note_by_id,
                get_notes, import_notes, prompt_about_note, save_note};
@@ -40,13 +40,11 @@ fn main() {
     // log here in the event of a panic
     set_panic_hook(&app_dir);
 
-    let text_embedding = TextEmbedding::try_new(InitOptions {
-        model_name: EmbeddingModel::AllMiniLML6V2,
+    let embedding_engine_options = EmbeddingEngineOptions {
         show_download_progress: true,
         cache_dir: app_dir.join("llm-cache"),
         ..Default::default()
-    })
-        .unwrap();
+    };
     // block until we get the Notebook
     let app_state = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -54,7 +52,7 @@ fn main() {
         .unwrap()
         .block_on(async {
             let notebook = Arc::new(Mutex::new(
-                Notebook::new(text_embedding, &app_dir).await.unwrap(),
+                Notebook::new(embedding_engine_options, app_dir.as_path()).await.unwrap(),
             ));
             AppState { notebook }
         });

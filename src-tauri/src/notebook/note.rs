@@ -1,8 +1,7 @@
 use serde::Serialize;
+use vec_embed_store::TextChunk;
 
-use crate::notebook::db::Documentable;
-
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Note {
     id: String,
     text: String,
@@ -10,43 +9,45 @@ pub struct Note {
     modified: i64,
 }
 
-impl PartialEq for Note {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+impl Note {
+    pub(crate) fn new(id: &str, text: &str) -> Self {
+        let now = chrono::Utc::now().timestamp();
+        Self::hydrate(id, text, now, now)
     }
-}
+    pub(crate) fn hydrate(id: &str, text: &str, created: i64, modified: i64) -> Self {
+        Self {
+            id: id.to_string(),
+            text: text.to_string(),
+            created,
+            modified,
+        }
+    }
 
-impl Documentable for Note {
-    fn id(&self) -> &str {
+    pub(crate) fn get_id(&self) -> &str {
         &self.id
     }
-
-    fn text(&self) -> &str {
+    pub(crate) fn get_text(&self) -> &str {
         &self.text
     }
-
-    fn created(&self) -> i64 {
+    pub(crate) fn get_created(&self) -> i64 {
         self.created
     }
-
-    fn modified(&self) -> i64 {
+    pub(crate) fn get_modified(&self) -> i64 {
         self.modified
     }
 
-    fn set_id(&mut self, id: String) {
-        self.id = id;
+    pub(crate) fn set_modified(&mut self, timestamp: i64) {
+        self.modified = timestamp;
     }
 
-    fn set_text(&mut self, text: String) {
-        self.text = text;
+    pub(crate) fn to_text_chunk(&self) -> TextChunk {
+        TextChunk { id: self.id.to_string(), text: self.text.to_string() }
     }
+}
 
-    fn set_created(&mut self, created: i64) {
-        self.created = created;
-    }
-
-    fn set_modified(&mut self, modified: i64) {
-        self.modified = modified;
+impl PartialEq for Note {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 
@@ -56,16 +57,15 @@ mod tests {
 
     #[test]
     fn test_get_id() {
-        let mut note = Note::default();
-        note.set_text("Test Note".to_string());
-        assert!(!note.id().is_empty());
+        let note = Note::new("1", "Test Note");
+        assert_eq!("1", note.get_id());
     }
 
     #[test]
     fn test_get_content() {
         let content = "Test Note";
-        let mut note = Note::default();
-        note.set_text(content.to_string());
-        assert_eq!(note.text(), content);
+        let mut note = Note::new("1", "foo");
+        note.set_text(content);
+        assert_eq!(note.get_text(), content);
     }
 }
