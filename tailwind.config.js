@@ -23,7 +23,15 @@ export default {
         require("daisyui"),
     ],
     daisyui: {
-        themes: ["light", "dark", "cupcake"],
+        themes: [{
+            "light": {
+                ...require("daisyui/src/theming/themes")["light"],
+                info: "#efefef"
+            },
+            "dark": {
+                ...require("daisyui/src/theming/themes")["dark"],
+            }
+        }],
     },
 }
 
