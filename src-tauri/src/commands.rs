@@ -48,17 +48,11 @@ pub async fn delete_all_notes(
 pub async fn add_category_to_note(
     notebook: State<'_, AppState>,
     note_id: &str,
-    category: &str,
+    category_label: &str,
 ) -> Result<(), String> {
-    info!("Adding category: '{}' to note [{}]", category, note_id);
-    let mut notebook = notebook.notebook.lock().await;
-    // match notebook.upsert_note(id, text).await {
-    //     Ok(note) => {
-    //         info!("Note[{}] saved", note.id);
-    //         Ok(note)
-    //     }
-    //     Err(e) => Err(format!("Error: {}", e)),
-    // }
+    info!("Adding category: '{}' to note [{}]", category_label, note_id);
+    let notebook = notebook.notebook.lock().await;
+    notebook.add_category_to_note(note_id, category_label).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 

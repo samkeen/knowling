@@ -79,15 +79,17 @@ impl Notebook {
                 info!("Adding new note[{}] to models database", note.get_id());
                 self.models_store.add_note(&note).await?;
                 info!("Adding new note[{}] to embeddings database", note.get_id());
-                self.embed_store.upsert_texts(&vec![
-                    TextChunk {
-                        id: note.get_text().to_string(),
-                        text: note.get_text().to_string(),
-                    }
-                ]).await?;
+                self.embed_store.upsert_texts(&[TextChunk {
+                    id: note.get_text().to_string(),
+                    text: note.get_text().to_string(),
+                }]).await?;
                 Ok(note)
             }
         }
+    }
+
+    pub async fn add_category_to_note(&self, note_id: &str, category_label: &str) -> Result<(), NotebookError> {
+        self.models_store.add_category(note_id, category_label).await
     }
 
     pub async fn delete_all_notes(&self) -> Result<(), NotebookError> {

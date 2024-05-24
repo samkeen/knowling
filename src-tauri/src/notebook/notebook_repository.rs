@@ -11,12 +11,6 @@ pub struct NotebookRepository {
     conn: Arc<Mutex<Connection>>,
 }
 
-#[derive(Debug)]
-struct Category {
-    id: u32,
-    label: String,
-}
-
 impl NotebookRepository {
     pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
         NotebookRepository {
@@ -82,7 +76,6 @@ impl NotebookRepository {
         Ok(notes)
     }
 
-
     pub async fn add_note(&self, note: &Note) -> Result<(), NotebookError> {
         let conn = self.conn.lock().await;
         log::info!("Adding note {} to models db", note.get_id());
@@ -102,6 +95,48 @@ impl NotebookRepository {
             (&note.get_text(), &note.get_modified(), &note.get_id()),
         )?;
         Ok(note.clone())
+    }
+
+    pub async fn add_category(&self, note_id: &str, cat_label: &str) -> Result<(), NotebookError> {
+        let conn = self.conn.lock().await;
+        let cat_label_sanitized = cat_label.trim().to_lowercase();
+        log::info!("Adding category '{}' to note {}", cat_label_sanitized, note_id);
+
+        // Check if the note exists
+        let note_exists = conn.query_row(
+            "SELECT COUNT(*) FROM notes WHERE id = ?1",
+            params![note_id],
+            |row| row.get::<_, i32>(0),
+        )?;
+        if note_exists == 0 {
+            return Err(NotebookError::NoteNotFound(note_id.to_string()));
+        }
+
+        // Perform a case-insensitive search for the category label
+
+        let mut stmt = conn.prepare("SELECT id, label FROM categories WHERE LOWER(label) = ?1")?;
+        let mut rows = stmt.query(params![cat_label_sanitized])?;
+
+        // get or create the category id
+        let category_id = if let Some(row) = rows.next()? {
+            let id: String = row.get(0)?;
+            id
+        } else {
+            // Category not found, create a new category
+            let new_id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO categories (id, label) VALUES (?1, ?2)",
+                params![new_id, cat_label_sanitized],
+            )?;
+            new_id
+        };
+        // Add the relation between the note and the category (no effect of relation already exists)
+        conn.execute(
+            "INSERT INTO note_category (note_id, category_id) VALUES (?1, ?2)",
+            params![note_id, category_id],
+        )?;
+
+        Ok(())
     }
 
     pub async fn delete_note(&self, id: &str) -> Result<(), NotebookError> {
@@ -132,7 +167,7 @@ impl NotebookRepository {
         let conn = self.conn.lock().await;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id CHAR(36) PRIMARY KEY,
             label  NVARCHAR(128) NOT NULL
         )", ())?;
 
@@ -148,10 +183,10 @@ impl NotebookRepository {
         conn.execute("
             CREATE TABLE IF NOT EXISTS note_category (
             note_id CHAR(36),
-            category_name NVARCHAR(128),
-            PRIMARY KEY (note_id, category_name),
+            category_id CHAR(36),
+            PRIMARY KEY (note_id, category_id),
             FOREIGN KEY (note_id) REFERENCES notes (id),
-            FOREIGN KEY (category_name) REFERENCES categories (name)
+            FOREIGN KEY (category_id) REFERENCES categories (id)
         )", ())?;
 
         Ok(())

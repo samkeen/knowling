@@ -123,7 +123,7 @@ async function handleAddCategory() {
     console.log("Adding category")
     let note = await invoke("add_category_to_note", {
       noteId: noteId.value,
-      category: newCategory.value
+      categoryLabel: newCategory.value
     });
     info(`Added cat[${newCategory.value}] to note`);
     newCategory.value = '';
