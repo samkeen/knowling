@@ -3,7 +3,7 @@
     <h2 class="text-xl font-bold mb-4">Related</h2>
     <ul>
       <li v-for="result in relatedNotes" :key="result.note.id">
-        <div class="tooltip" :data-tip="result.similarityScore">
+        <div class="tooltip tooltip-info" :data-tip="result.similarityScore">
           <RouterLink :to="{name: 'EditNote', params: {id:result.note.id}}">{{
               noteTitle(result.note.text)
             }}
@@ -16,9 +16,9 @@
 
 <script setup>
 import {RouterLink} from 'vue-router'
-import {ref, defineProps, onMounted} from 'vue';
-import {noteTitle, getRelatedNotes} from '../lib/notebook.js';
-import {info, debug} from "tauri-plugin-log-api";
+import {defineProps, onMounted, ref} from 'vue';
+import {getRelatedNotes, noteTitle} from '../lib/notebook.js';
+import {debug, info} from "tauri-plugin-log-api";
 
 const props = defineProps({
   noteId: {

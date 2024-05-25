@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 use vec_embed_store::{EmbedDbError, EmbeddingEngineOptions, EmbeddingsDb, TextChunk};
 
-use crate::notebook::note::Note;
+use crate::notebook::note::{Category, Note};
 use crate::notebook::notebook_repository::NotebookRepository;
 
 pub mod note;
@@ -34,15 +34,22 @@ impl Notebook {
         app_dir: &Path,
     ) -> Result<Self, NotebookError> {
         // cast app_dir to a &str
-        let app_dir_str = app_dir.to_str().ok_or(
-            NotebookError::FileAccess("Invalid app directory path".to_string()))?;
+        let app_dir_str = app_dir.to_str().ok_or(NotebookError::FileAccess(
+            "Invalid app directory path".to_string(),
+        ))?;
         let embed_store = EmbeddingsDb::new(app_dir_str, embedding_engine_options).await?;
         let db_path = app_dir.join("db.sqlite");
         let conn = Arc::new(Mutex::new(Connection::open(&db_path)?));
         let nb_repository = NotebookRepository::new(conn);
-        nb_repository.init_db().await.expect("Unable it initialize models db");
+        nb_repository
+            .init_db()
+            .await
+            .expect("Unable it initialize models db");
         info!("Connection to models db established: {:?}", db_path);
-        Ok(Notebook { embed_store, models_store: nb_repository })
+        Ok(Notebook {
+            embed_store,
+            models_store: nb_repository,
+        })
     }
 
     /// Rather than create/update we only have upsert
@@ -60,15 +67,9 @@ impl Notebook {
                 let existing_note = self.models_store.get_note(&id).await?;
                 match existing_note {
                     Some(mut note) => {
-                        info!("updating note {} in models db", note.get_id());
-                        let updated_note = self.models_store.update_note(&mut note).await?;
-                        info!("updating note {} in embeddings db", updated_note.get_id());
-                        let text_chunk = TextChunk {
-                            id: updated_note.get_text().to_string(),
-                            text: updated_note.get_text().to_string(),
-                        };
-                        self.embed_store.upsert_texts(&[text_chunk]).await?;
-                        Ok(updated_note)
+                        note.set_modified(Self::get_now());
+                        self.save_note_text(&note).await?;
+                        Ok(note)
                     }
                     None => Err(NotebookError::NoteNotFound(id.to_string())),
                 }
@@ -79,17 +80,88 @@ impl Notebook {
                 info!("Adding new note[{}] to models database", note.get_id());
                 self.models_store.add_note(&note).await?;
                 info!("Adding new note[{}] to embeddings database", note.get_id());
-                self.embed_store.upsert_texts(&[TextChunk {
-                    id: note.get_text().to_string(),
-                    text: note.get_text().to_string(),
-                }]).await?;
+                self.embed_store
+                    .upsert_texts(&[TextChunk {
+                        id: note.get_text().to_string(),
+                        text: note.get_text().to_string(),
+                    }])
+                    .await?;
                 Ok(note)
             }
         }
     }
 
-    pub async fn add_category_to_note(&self, note_id: &str, category_label: &str) -> Result<(), NotebookError> {
-        self.models_store.add_category(note_id, category_label).await
+    async fn save_note_text(&self, note: &Note) -> Result<(), NotebookError> {
+        info!("Saving existing note {} in models db", note.get_id());
+        let updated_note = self.models_store.update_note_text(note).await?;
+        info!("updating note {} in embeddings db", updated_note.get_id());
+        let text_chunk = TextChunk {
+            id: updated_note.get_text().to_string(),
+            text: updated_note.get_text().to_string(),
+        };
+        self.embed_store.upsert_texts(&[text_chunk]).await?;
+        Ok(())
+    }
+
+    pub async fn add_category_to_note(
+        &self,
+        note_id: &str,
+        category_label: &str,
+    ) -> Result<Note, NotebookError> {
+        let category = self.get_or_create_category(category_label).await?;
+        match self.get_note_by_id(note_id).await? {
+            Some(mut note) => {
+                if !note.has_category(&category) {
+                    note.add_category(category);
+                    self.models_store.reconcile_note_categories(&note).await?;
+                }
+                Ok(note.clone())
+            }
+            None => Err(NotebookError::NoteNotFound(format!(
+                "Note: {} not found",
+                note_id
+            ))),
+        }
+    }
+
+    pub async fn remove_category_from_note(
+        &self,
+        note_id: &str,
+        category_id: &str,
+    ) -> Result<Note, NotebookError> {
+        match self.get_note_by_id(note_id).await? {
+            Some(mut note) => {
+                if let Some(category) = self.get_category_by_id(category_id).await? {
+                    if note.has_category(&category) {
+                        note.remove_category(category);
+                        self.models_store.reconcile_note_categories(&note).await?;
+                    }
+                    Ok(note.clone())
+                } else {
+                    // The Cat was not in to models db, ensure the Cat Id is not held within the
+                    // Note
+                    info!("Category [{}] was not found in the db, ensuring it is not associated with noe: [{}]",category_id, note_id);
+                    note.remove_category_by_id(category_id);
+                    self.models_store.reconcile_note_categories(&note).await?;
+                    Ok(note.clone())
+                }
+            }
+            None => Err(NotebookError::NoteNotFound(format!(
+                "Note: {} not found",
+                note_id
+            ))),
+        }
+    }
+
+    pub async fn get_or_create_category(&self, cat_label: &str) -> Result<Category, NotebookError> {
+        self.models_store.get_or_create_category(cat_label).await
+    }
+
+    pub async fn get_category_by_id(
+        &self,
+        cat_id: &str,
+    ) -> Result<Option<Category>, NotebookError> {
+        self.models_store.get_category_by_id(cat_id).await
     }
 
     pub async fn delete_all_notes(&self) -> Result<(), NotebookError> {
@@ -135,14 +207,23 @@ impl Notebook {
             .map_err(|e| NotebookError::EmbeddingError(e.to_string()))?;
         // remove the result_text_blocks where id == note.id
         result_text_blocks.retain(|item| item.id != note.get_id());
-        let note_ids = result_text_blocks.iter().map(
-            |block| &block.id as &str
-        ).collect::<Vec<&str>>();
+        let note_ids = result_text_blocks
+            .iter()
+            .map(|block| &block.id as &str)
+            .collect::<Vec<&str>>();
         let result_notes = self.models_store.get_notes_by_ids(note_ids).await?;
-        let notes_map: HashMap<String, Note> = result_notes.into_iter().map(|note| (note.get_id().to_string(), note)).collect();
+        let notes_map: HashMap<String, Note> = result_notes
+            .into_iter()
+            .map(|note| (note.get_id().to_string(), note))
+            .collect();
 
-        let combined: Vec<(Note, f32)> = result_text_blocks.iter()
-            .filter_map(|block| notes_map.get(&block.id).map(|note| (note.clone(), block.distance as f32)))
+        let combined: Vec<(Note, f32)> = result_text_blocks
+            .iter()
+            .filter_map(|block| {
+                notes_map
+                    .get(&block.id)
+                    .map(|note| (note.clone(), block.distance as f32))
+            })
             .collect();
         if combined.is_empty() {
             info!("No similar note found at threshold: {}", threshold)
@@ -216,9 +297,7 @@ impl Notebook {
             .iter()
             .map(|note| note.to_text_chunk())
             .collect();
-        self.embed_store
-            .upsert_texts(&text_chunks)
-            .await?;
+        self.embed_store.upsert_texts(&text_chunks).await?;
 
         Ok(imported_notes.len())
     }
@@ -254,7 +333,6 @@ impl Notebook {
         title
     }
 
-
     fn is_writable(&self, path: &PathBuf) -> bool {
         if let Ok(metadata) = fs::metadata(path) {
             if metadata.is_dir() {
@@ -284,7 +362,12 @@ impl Notebook {
 
     /// Generates a random id for a Document.
     /// The id is a 6-character string composed of alphanumeric characters.
-    fn generate_id() -> String { Uuid::new_v4().to_string() }
+    fn generate_id() -> String {
+        Uuid::new_v4().to_string()
+    }
+    fn get_now() -> i64 {
+        Utc::now().timestamp()
+    }
 }
 
 #[derive(Error, Debug)]

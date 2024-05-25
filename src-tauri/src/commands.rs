@@ -18,7 +18,7 @@ const SYS_PROMPT_CONSIDER_NOTE: &str = r#"You are a personal assistant. You advi
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-pub async fn save_note(
+pub async fn save_note_text(
     notebook: State<'_, AppState>,
     id: Option<&str>,
     text: &str,
@@ -49,12 +49,25 @@ pub async fn add_category_to_note(
     notebook: State<'_, AppState>,
     note_id: &str,
     category_label: &str,
-) -> Result<(), String> {
+) -> Result<Note, String> {
     info!("Adding category: '{}' to note [{}]", category_label, note_id);
     let notebook = notebook.notebook.lock().await;
-    notebook.add_category_to_note(note_id, category_label).await.map_err(|e| e.to_string())?;
-    Ok(())
+    let note = notebook.add_category_to_note(note_id, category_label).await.map_err(|e| e.to_string())?;
+    Ok(note)
 }
+
+#[tauri::command]
+pub async fn remove_category_from_note(
+    notebook: State<'_, AppState>,
+    note_id: &str,
+    category_id: &str,
+) -> Result<Note, String> {
+    info!("Removing category: '{}' to note [{}]", category_id, note_id);
+    let notebook = notebook.notebook.lock().await;
+    let note = notebook.remove_category_from_note(note_id, category_id).await.map_err(|e| e.to_string())?;
+    Ok(note)
+}
+
 
 #[tauri::command]
 pub async fn prompt_about_note(notebook: State<'_, AppState>, app_handle: tauri::AppHandle,
