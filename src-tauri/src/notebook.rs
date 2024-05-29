@@ -68,6 +68,7 @@ impl Notebook {
                 match existing_note {
                     Some(mut note) => {
                         note.set_modified(Self::get_now());
+                        note.set_text(content);
                         self.save_note_text(&note).await?;
                         Ok(note)
                     }
@@ -92,11 +93,11 @@ impl Notebook {
     }
 
     async fn save_note_text(&self, note: &Note) -> Result<(), NotebookError> {
-        info!("Saving existing note {} in models db", note.get_id());
-        let updated_note = self.models_store.update_note_text(note).await?;
-        info!("updating note {} in embeddings db", updated_note.get_id());
+        info!("updating note {} to models db", note.get_id());
+        let updated_note = self.models_store.update_note_text(&note).await?;
+        info!("updating note {} in embeddings db", note.get_id());
         let text_chunk = TextChunk {
-            id: updated_note.get_text().to_string(),
+            id: updated_note.get_id().to_string(),
             text: updated_note.get_text().to_string(),
         };
         self.embed_store.upsert_texts(&[text_chunk]).await?;

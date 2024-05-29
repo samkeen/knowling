@@ -118,6 +118,11 @@ impl Note {
         self.modified = timestamp;
     }
 
+    pub(crate) fn set_text(&mut self, text: &str) {
+        self.text = text.to_string();
+    }
+
+
     pub(crate) fn to_text_chunk(&self) -> TextChunk {
         TextChunk {
             id: self.id.to_string(),
