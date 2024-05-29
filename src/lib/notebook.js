@@ -18,7 +18,7 @@ export async function deleteNote(noteId, router) {
 export async function upsertNote(noteId, noteText) {
     if (noteId) {
         try {
-            let note = await invoke("save_note", {id: noteId, text: noteText});
+            let note = await invoke("save_note_text", {id: noteId, text: noteText});
             console.log("Note updated:", note.id);
         } catch (error) {
             console.error("Failed saving note:", error);
@@ -26,7 +26,7 @@ export async function upsertNote(noteId, noteText) {
         }
     } else {
         try {
-            let note = await invoke("save_note", {id: null, text: noteText});
+            let note = await invoke("save_note_text", {id: null, text: noteText});
             console.log("Note created:", note.id);
             return note.id;
         } catch (error) {
