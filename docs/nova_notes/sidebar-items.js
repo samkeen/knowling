@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["greet","main"],"mod":["commands","notebook"]};

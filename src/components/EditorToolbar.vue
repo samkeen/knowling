@@ -16,7 +16,7 @@
           </div>
         </div>
       </div>
-      <button class="btn btn-circle btn-xs tooltip tooltip-bottom tooltip-info" data-tip="Add to Favorites">☆</button>
+      <!--      <button class="btn btn-circle btn-xs tooltip tooltip-bottom tooltip-info" data-tip="Add to Favorites">☆</button>-->
       <button @click="openQuestionDialog" class="btn btn-circle btn-xs tooltip tooltip-bottom tooltip-info"
               data-tip="Ask AI">?
       </button>

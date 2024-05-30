@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"nova_notes":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.76.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"nova_notes/notebook/db/struct.Document.html\" title=\"struct nova_notes::notebook::db::Document\">Document</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

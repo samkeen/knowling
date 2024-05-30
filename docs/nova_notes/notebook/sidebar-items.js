@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["NotebookError"],"mod":["db","note"],"struct":["Notebook"]};
