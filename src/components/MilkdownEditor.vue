@@ -12,7 +12,7 @@ import {nord} from '@milkdown/theme-nord'
 import {commonmark} from '@milkdown/preset-commonmark'
 import {useNodeViewFactory, usePluginViewFactory, useWidgetViewFactory} from '@prosemirror-adapter/vue';
 import {tooltipFactory} from '@milkdown/plugin-tooltip';
-import Tooltip from './Tooltip.vue';
+import Tooltip from './ToolTip.vue';
 import {ref} from "vue";
 import {info} from "tauri-plugin-log-api";
 import {listener, listenerCtx} from '@milkdown/plugin-listener'
