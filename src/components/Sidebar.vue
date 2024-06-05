@@ -34,7 +34,7 @@ async function fetchRelatedNotes(noteId) {
   let storedThreshold = parseFloat(localStorage.getItem("similarityScoreThreshold"));
   if (!storedThreshold) {
     debug('No stored similarity score threshold found. Using default value: 0.30');
-    storedThreshold = 0.3;
+    storedThreshold = 0.30;
   }
   info(`using similarity score threshold: ${storedThreshold}`);
   relatedNotes.value = await getRelatedNotes(noteId, storedThreshold);
@@ -42,8 +42,9 @@ async function fetchRelatedNotes(noteId) {
 }
 
 onMounted(() => {
+  info(`Received note id: ${props.noteId}`);
   if (props.noteId) {
-    info('Getting related notes for:', props.noteId);
+    info(`Getting related notes for: ${props.noteId}`);
     fetchRelatedNotes(props.noteId);
   }
 });
