@@ -69,8 +69,8 @@ fn main() {
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets(LOG_TARGETS)
-                .level(LevelFilter::Warn)
-                .level_for("knowling", LevelFilter::Info)
+                .level(LevelFilter::Info)
+                // .level_for("knowling", LevelFilter::Info) // this does not seem to work???
                 .build(),
         )
         .plugin(
