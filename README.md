@@ -59,6 +59,14 @@ npm run tauri dev
 
 ## Development
 
+### Build
+
+https://tauri.app/v1/api/cli/
+
+```bash
+npm run tauri build
+```
+
 Development follows the common practices of [developing a Tauri application](https://tauri.app/v1/guides/).
 
 ### Debugging in RustRover
