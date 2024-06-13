@@ -44,9 +44,26 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
+
+      - name: install dependencies (OSX only)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          brew install protobuf
+          # curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v21.7/protoc-21.7-osx-x86_64.zip
+          # vunzip protoc-21.7-osx-x86_64.zip -d protoc
+          # sudo cp -R protoc/include/google /usr/local/include/
+          # sudo cp protoc/bin/protoc /usr/local/bin/protoc
+
+      - name: install dependencies (Windows only)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri https://github.com/protocolbuffers/protobuf/releases/download/v27.1/protoc-27.1-win64.zip -OutFile protoc-21.7-win64.zip
+          Expand-Archive -Path protoc-21.7-win64.zip -DestinationPath protoc
+          echo "${{ github.workspace }}\protoc\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: install frontend dependencies
         run: yarn install # change this to npm, pnpm or bun depending on which one you use.
