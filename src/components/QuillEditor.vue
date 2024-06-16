@@ -38,6 +38,8 @@ import {deltaToMarkdown} from "quill-delta-to-markdown";
 import {MarkdownToQuill} from "md-to-quill-delta";
 
 let initContentLoaded = false;
+// This is to block the change event from being emitted when the note is first loaded into the editor
+const initialLoad = ref(true);
 
 // Define the component name
 const name = "EditorRich";
@@ -68,6 +70,7 @@ watch(
         const converter = new MarkdownToQuill({});
         const ops = converter.convert(newContent);
         quill.setContents(ops);
+        initialLoad.value = false; // Set initialLoad to false after setting the initial content
       }
     },
     {immediate: true} // Trigger the watcher immediately
@@ -92,23 +95,16 @@ onMounted(() => {
 
   // Listen for text changes in the Quill editor
   quill.on("text-change", () => {
-    // Convert the Quill delta to Markdown
-    const markdownCode = deltaToMarkdown(quill.getContents().ops);
-    // Emit the 'change' event with the Markdown code
-    emit("change", markdownCode);
+    if (!initialLoad.value) {
+      // Convert the Quill delta list to Markdown
+      const markdownCode = deltaToMarkdown(quill.getContents().ops);
+      emit("change", markdownCode);
+    }
   });
 
   // Focus the editor when the container is clicked
   if (textEditor.value) {
     const editor = textEditor.value.querySelector(".ql-editor");
-    textEditor.value.addEventListener("click", (e) => {
-      console.log("CLICK ON: ", e.target)
-      console.log("CLICK ON ID: ", e.target.id) // TODO FIX: `e.target.id == ""`
-      if (e.target.id !== "editor") {
-        return;
-      }
-      editor.focus();
-    });
   }
 });
 </script>
