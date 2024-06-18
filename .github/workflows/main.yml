@@ -1,12 +1,14 @@
+###########################################
+# See https://tauri.app/v1/guides/building/cross-platform/#tauri-github-action
+# On each push to the `release` branch it will create or update a GitHub
+# release, build your app, and upload the artifacts to the release.
+###########################################
 name: "publish"
 
 on:
   push:
     branches:
       - release
-
-# This is the example from the readme.
-# On each push to the `release` branch it will create or update a GitHub release, build your app, and upload the artifacts to the release.
 
 jobs:
   publish-tauri:

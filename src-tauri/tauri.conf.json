@@ -6,8 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "knowling",
-    "version": "0.1.0"
+    "productName": "knowling"
   },
   "tauri": {
     "allowlist": {
@@ -43,7 +42,10 @@
         "icons/128x128@2x.png",
         "icons/icon.icns",
         "icons/icon.ico"
-      ]
+      ],
+      "macOS": {
+        "signingIdentity": "-"
+      }
     }
   }
 }

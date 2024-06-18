@@ -1,6 +1,6 @@
 [package]
 name = "knowling"
-version = "0.1.0"
+version = "0.1.1"
 description = "Knowling aims to provide users with an intuitive platform for gathering and organizing knowledge from various research sources. By leveraging AI, Knowling assists users in categorizing their notes and highlighting connections between them, thereby enhancing the overall management of their personal knowledge store."
 authors = ["sam@devthink.ai"]
 edition = "2021"
